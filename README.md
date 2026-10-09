@@ -1,72 +1,117 @@
 # VR Physics Lab
 
-An immersive Virtual Reality (VR) physics laboratory designed to make learning physics more interactive, engaging, and intuitive.
+An immersive Virtual Reality (VR) physics laboratory designed to make learning physics interactive, intuitive, and engaging through hands-on experimentation.
 
 ## Overview
 
-VR Physics Lab is an educational project that explores how virtual reality and game-based learning can help students understand physics concepts through hands-on experimentation.
+VR Physics Lab is an educational VR project that explores how immersive environments and game-based learning can help students understand physics concepts.
 
-Instead of relying solely on theoretical explanations, users will be able to interact with virtual objects, experiment with physical principles, and observe the results in an immersive environment.
-
-The project aims to combine educational value with engaging gameplay and interactive simulation.
+Users will be able to interact with virtual objects, perform experiments, and observe physical phenomena in a 3D environment. The goal is to combine educational value with engaging, interactive gameplay.
 
 ## Project Goals
 
-* Make abstract physics concepts easier to understand through visualization.
+* Make abstract physics concepts easier to understand through interactive simulations.
 * Encourage learning through experimentation and discovery.
-* Create an interactive and engaging VR learning experience.
-* Explore the use of virtual reality in physics education.
+* Create an immersive and engaging VR learning experience.
+* Explore the potential of virtual reality in physics education.
 
-## Features
+## Planned Features
 
-🚧 This project is currently under development.
-
-Planned features and experiments may include:
+🚧 **Currently in development.**
 
 * Interactive physics experiments.
 * VR object manipulation and interaction.
-* Real-time visualization of physical phenomena.
+* Visualization of physical phenomena.
 * Experiment-based learning scenarios.
 * Game-inspired educational mechanics.
 
-The final features and supported physics topics will be documented as development progresses.
+The final experiments and features will be defined and documented as development progresses.
 
 ## Technology Stack
 
-* **Game Engine:** Unity
-* **Language:** C#
-* **VR Platform:** Meta Quest
-* **VR Interaction:** VR Interaction Framework
+| Technology           | Version / Details        |
+| -------------------- | ------------------------ |
+| Game Engine          | Unity 6.3 LTS            |
+| Unity Editor Version | `6000.3.10f1`            |
+| Programming Language | C#                       |
+| Target Platform      | VR / Meta Quest          |
+| VR Interaction       | VR Interaction Framework |
 
 ## Development Status
 
-**Status:** Early Development
+**Early Development**
 
-This repository contains the development work, experiments, and implementation of the VR Physics Lab project.
-
-Features, documentation, and supported experiments will be updated throughout development.
-
-## Project Structure
-
-The repository structure will evolve as the project develops.
-
-* `Assets/` — Game assets, scenes, scripts, and resources.
-* `Packages/` — Unity package dependencies.
-* `ProjectSettings/` — Unity project configuration.
+The project is currently in development. Core interactions, physics experiments, and educational gameplay systems will be implemented iteratively.
 
 ## Getting Started
 
-1. Clone or download this repository.
-2. Open the project using a compatible version of Unity.
-3. Ensure the required VR packages and dependencies are installed.
-4. Configure your VR headset and test the project in the target environment.
+### Requirements
 
-Specific Unity versions, setup instructions, and hardware requirements will be added as the project progresses.
+* Unity Hub
+* Unity Editor `6000.3.10f1`
+* Git
+* A compatible VR headset (planned target: Meta Quest)
+* Required VR packages and dependencies
+
+### Installation
+
+1. Clone this repository:
+
+   ```bash
+   git clone <repository-url>
+   ```
+
+2. Open Unity Hub.
+
+3. Select **Add project from disk** and choose the cloned project folder.
+
+4. Open the project using Unity Editor `6000.3.10f1`.
+
+5. Install or configure the required VR packages and headset integration.
+
+6. Open the main scene and run the project.
+
+*Note: VR setup instructions may change as the project develops.*
+
+## Project Structure
+
+The repository will follow the standard Unity project structure.
+
+```text
+VR
+-Physics-Lab/
+├── Assets/
+│   ├── Scenes/
+│   ├── Scripts/
+│   ├── Materials/
+│   ├── Prefabs/
+│   └── ...
+├── Packages/
+├── ProjectSettings/
+└── README.md
+```
+
+The directory structure may evolve during development.
+
+## Roadmap
+
+* [ ] Initialize the Unity project and version control.
+* [ ] Configure VR support and headset interaction.
+* [ ] Implement core VR interactions.
+* [ ] Develop the first interactive physics experiment.
+* [ ] Add visual feedback and educational explanations.
+* [ ] Test usability and performance in VR.
+* [ ] Document completed experiments and features.
+
+## Contributing
+
+This repository primarily documents the development of the VR Physics Lab project. Suggestions and feedback are welcome.
 
 ## License
 
-No license has been selected yet. All rights are reserved unless otherwise stated.
+No license has been selected yet. All rights are reserved unless a license is added to this repository.
 
 ## Acknowledgements
 
-This project is developed as an exploration of immersive learning, virtual reality, and interactive physics education.
+Developed as an exploration of virtual reality, interactive simulation, and game-based physics education.
+
