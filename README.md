@@ -58,7 +58,7 @@ The project is currently in development. Core interactions, physics experiments,
 1. Clone this repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Enestncs/VR-Physics-Lab.git
    ```
 
 2. Open Unity Hub.
