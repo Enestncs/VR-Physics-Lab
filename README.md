@@ -93,16 +93,6 @@ VR
 
 The directory structure may evolve during development.
 
-## Roadmap
-
-* [ ] Initialize the Unity project and version control.
-* [ ] Configure VR support and headset interaction.
-* [ ] Implement core VR interactions.
-* [ ] Develop the first interactive physics experiment.
-* [ ] Add visual feedback and educational explanations.
-* [ ] Test usability and performance in VR.
-* [ ] Document completed experiments and features.
-
 ## Contributing
 
 This repository primarily documents the development of the VR Physics Lab project. Suggestions and feedback are welcome.
