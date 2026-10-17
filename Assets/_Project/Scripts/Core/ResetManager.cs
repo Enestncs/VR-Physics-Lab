@@ -83,6 +83,11 @@ namespace VRPhysicsLab.Core
         [ContextMenu("Reset All")]
         public void ResetAll()
         {
+            if (resetables == null || resetables.Count == 0)
+            {
+                RefreshResetablesList();
+            }
+
             onBeforeReset?.Invoke();
 
             foreach (var resetable in resetables)
