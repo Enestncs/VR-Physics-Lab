@@ -11,32 +11,35 @@ namespace VRPhysicsLab.Core
     /// Supports hand touch/poke, palm presses, laser pointer clicks, and editor keyboard shortcuts.
     /// Provides mechanical spring animation, audio click feedback, and controller haptic rumble.
     /// </summary>
+    [ExecuteAlways]
     [RequireComponent(typeof(AudioSource))]
     public class VRPhysicalButton : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
     {
         [Header("Plunger Setup")]
         [Tooltip("The moving part of the button that depresses.")]
         [SerializeField] private Transform plunger;
+        [Tooltip("Resting local position of the plunger when unpressed.")]
+        [SerializeField] private Vector3 restingLocalPos = new Vector3(0f, 0.035f, 0f);
         [Tooltip("Maximum travel distance downwards in meters.")]
-        [SerializeField] private float travelDistance = 0.018f;
+        [SerializeField] private float travelDistance = 0.015f;
         [Tooltip("Speed of spring return.")]
-        [SerializeField] private float springSpeed = 18f;
+        [SerializeField] private float springSpeed = 22f;
 
         [Header("Feedback")]
         [SerializeField] private AudioClip clickSound;
         [SerializeField] private AudioClip releaseSound;
         [Tooltip("Haptic rumble amplitude (0 to 1).")]
         [Range(0f, 1f)]
-        [SerializeField] private float hapticAmplitude = 0.75f;
+        [SerializeField] private float hapticAmplitude = 0.85f;
         [Tooltip("Haptic rumble duration in seconds.")]
-        [SerializeField] private float hapticDuration = 0.08f;
+        [SerializeField] private float hapticDuration = 0.10f;
 
         [Header("Visual Feedback")]
         [SerializeField] private Renderer plungerRenderer;
         [ColorUsage(true, true)]
         [SerializeField] private Color normalEmission = Color.black;
         [ColorUsage(true, true)]
-        [SerializeField] private Color pressedEmission = new Color(0.4f, 0.4f, 0.4f);
+        [SerializeField] private Color pressedEmission = new Color(0.85f, 0.65f, 0.05f);
 
         [Header("Editor & Shortcut")]
         [SerializeField] private KeyCode keyboardShortcut = KeyCode.None;
@@ -45,7 +48,6 @@ namespace VRPhysicsLab.Core
         public UnityEvent onPressed;
         public UnityEvent onReleased;
 
-        private Vector3 initialLocalPos;
         private Vector3 pressedLocalPos;
         private AudioSource audioSource;
         private Material plungerMatInstance;
@@ -56,11 +58,39 @@ namespace VRPhysicsLab.Core
         // Tracks colliding objects to maintain depression while touching
         private readonly HashSet<Collider> touchingColliders = new HashSet<Collider>();
 
+        public Vector3 RestingLocalPos
+        {
+            get => restingLocalPos;
+            set
+            {
+                restingLocalPos = value;
+                UpdatePositions();
+            }
+        }
+
+        private void OnValidate()
+        {
+            if (plunger == null)
+            {
+                plunger = transform.Find("Plunger");
+            }
+
+            UpdatePositions();
+
+            if (!Application.isPlaying && plunger != null)
+            {
+                plunger.localPosition = restingLocalPos;
+            }
+        }
+
         private void Awake()
         {
             audioSource = GetComponent<AudioSource>();
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 1.0f; // 3D sound
+            if (audioSource != null)
+            {
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 1.0f; // 3D sound
+            }
 
             if (plunger == null)
             {
@@ -68,37 +98,63 @@ namespace VRPhysicsLab.Core
                 if (plunger == null) plunger = transform;
             }
 
-            initialLocalPos = plunger.localPosition;
-            pressedLocalPos = initialLocalPos - new Vector3(0f, travelDistance, 0f);
+            UpdatePositions();
 
-            if (plungerRenderer != null)
+            if (Application.isPlaying && plungerRenderer != null)
             {
                 plungerMatInstance = plungerRenderer.material;
                 SetEmission(normalEmission);
             }
         }
 
+        private void Start()
+        {
+            UpdatePositions();
+            if (plunger != null)
+            {
+                plunger.localPosition = restingLocalPos;
+            }
+        }
+
+        private void UpdatePositions()
+        {
+            if (restingLocalPos == Vector3.zero && plunger != null && plunger != transform)
+            {
+                restingLocalPos = plunger.localPosition;
+            }
+            pressedLocalPos = restingLocalPos - new Vector3(0f, travelDistance, 0f);
+        }
+
         private void Update()
         {
+            if (!Application.isPlaying)
+            {
+                if (plunger != null)
+                {
+                    plunger.localPosition = restingLocalPos;
+                }
+                return;
+            }
+
             // Keyboard shortcut support for quick testing
             if (keyboardShortcut != KeyCode.None && Input.GetKeyDown(keyboardShortcut))
             {
                 TriggerPress(ControllerHand.Right);
             }
 
-            // Clean up any null / destroyed colliders
+            // Clean up any null / destroyed / disabled colliders
             touchingColliders.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
 
             // Determine target position based on whether anything is pressing it
             bool shouldBePressed = touchingColliders.Count > 0;
-            Vector3 targetPos = shouldBePressed ? pressedLocalPos : initialLocalPos;
+            Vector3 targetPos = shouldBePressed ? pressedLocalPos : restingLocalPos;
 
             // Smooth spring lerp
             plunger.localPosition = Vector3.Lerp(plunger.localPosition, targetPos, Time.deltaTime * springSpeed);
 
             // Handle press activation threshold
             float currentY = plunger.localPosition.y;
-            float thresholdY = initialLocalPos.y - (travelDistance * 0.65f);
+            float thresholdY = restingLocalPos.y - (travelDistance * 0.60f);
 
             if (currentY <= thresholdY && !isPressed)
             {
@@ -115,8 +171,6 @@ namespace VRPhysicsLab.Core
             if (IsValidPresser(other))
             {
                 touchingColliders.Add(other);
-                
-                // Identify hand for haptics
                 ControllerHand hand = GetControllerHand(other);
                 TriggerHaptics(hand);
             }
@@ -135,16 +189,12 @@ namespace VRPhysicsLab.Core
             if (col == null) return false;
             if (col.transform.IsChildOf(transform)) return false; // Ignore own colliders
 
-            // Accept any VR hand, controller, or grabber
+            // Only accept player hands, controllers, fingers, or player body
+            // This prevents loose objects (like weights) from accidentally pressing or holding the button down
             if (col.GetComponentInParent<Grabber>() != null) return true;
             if (col.GetComponentInParent<UITrigger>() != null) return true;
             if (col.GetComponentInParent<HandController>() != null) return true;
             if (col.GetComponentInParent<BNGPlayerController>() != null) return true;
-
-            // Also accept any object with a Rigidbody (e.g. tools, weights poked into button)
-            if (col.attachedRigidbody != null) return true;
-
-            // Accept character controller or tagged player
             if (col.CompareTag("Player")) return true;
 
             return false;
@@ -237,14 +287,13 @@ namespace VRPhysicsLab.Core
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            // Optional pointer down feedback
         }
 
         private void OnDestroy()
         {
             if (plungerMatInstance != null)
             {
-                Destroy(plungerMatInstance);
+                DestroyImmediate(plungerMatInstance);
             }
         }
     }
