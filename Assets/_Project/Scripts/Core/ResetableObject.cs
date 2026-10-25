@@ -113,10 +113,14 @@ namespace VRPhysicsLab.Core
                     rb.linearVelocity = Vector3.zero;
                     rb.angularVelocity = Vector3.zero;
                 }
+                rb.position = initialPosition;
+                rb.rotation = initialRotation;
                 rb.mass = initialMass;
                 rb.useGravity = initialUseGravity;
                 rb.isKinematic = initialIsKinematic;
             }
+
+            UnityEngine.Physics.SyncTransforms();
 
             onReset?.Invoke();
         }

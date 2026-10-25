@@ -1,14 +1,30 @@
+using System.Collections.Generic;
 using UnityEngine;
 using BNG;
 
 namespace VRPhysicsLab.Physics
 {
     /// <summary>
-    /// Trigger zone on top of the physics cart that detects and registers placed weight blocks.
+    /// Trigger zone on top of the physics cart that detects, locks, and registers placed weight blocks.
+    /// Tracks candidates inside the trigger volume:
+    /// - Only accepts valid weight objects (objects with a Grabbable component that are NOT the player/hands).
+    /// - If a weight is held by the player in VR, it remains detached so the player can place it freely.
+    /// - As soon as the player releases/drops the weight inside the slot, it is locked onto the cart
+    ///   (parented + kinematic + mass added) so it NEVER slides off the frictionless cart bed.
+    /// - If the player grabs an attached weight, it is instantly detached and freed back to the hand.
     /// </summary>
     public class CartWeightSlot : MonoBehaviour
     {
         [SerializeField] private CartPhysics cartPhysics;
+
+        private class CandidateWeight
+        {
+            public Rigidbody rb;
+            public Grabbable grabbable;
+            public Collider collider;
+        }
+
+        private readonly List<CandidateWeight> candidates = new List<CandidateWeight>();
 
         private void Awake()
         {
@@ -20,20 +36,102 @@ namespace VRPhysicsLab.Physics
 
         private void OnTriggerEnter(Collider other)
         {
+            if (cartPhysics == null) return;
+
             var rb = other.attachedRigidbody;
-            if (rb != null && rb != cartPhysics.Rigidbody)
+            if (rb == null || rb == cartPhysics.Rigidbody) return;
+
+            // CRITICAL: Strictly reject player hands, grabbers, controllers or the player body!
+            if (other.GetComponentInParent<Grabber>() != null ||
+                other.GetComponentInParent<BNGPlayerController>() != null ||
+                other.GetComponentInParent<HandController>() != null ||
+                rb.GetComponentInParent<Grabber>() != null ||
+                rb.GetComponentInParent<BNGPlayerController>() != null)
             {
-                cartPhysics.AddWeight(rb);
+                return;
             }
+
+            // Only grabbable weight items can be attached
+            var grabbable = rb.GetComponent<Grabbable>();
+            if (grabbable == null) return;
+
+            // Don't add duplicate entries for multi-collider weights
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (candidates[i].rb == rb) return;
+            }
+
+            candidates.Add(new CandidateWeight
+            {
+                rb = rb,
+                grabbable = grabbable,
+                collider = other
+            });
         }
 
         private void OnTriggerExit(Collider other)
         {
+            if (cartPhysics == null) return;
+
             var rb = other.attachedRigidbody;
-            if (rb != null && rb != cartPhysics.Rigidbody)
+            if (rb == null || rb == cartPhysics.Rigidbody) return;
+
+            for (int i = candidates.Count - 1; i >= 0; i--)
             {
-                cartPhysics.RemoveWeight(rb);
+                if (candidates[i].rb == rb)
+                {
+                    candidates.RemoveAt(i);
+                    break;
+                }
             }
+
+            if (cartPhysics.IsWeightAttached(rb))
+            {
+                cartPhysics.DetachWeight(rb);
+            }
+        }
+
+        private void FixedUpdate()
+        {
+            if (cartPhysics == null) return;
+
+            for (int i = candidates.Count - 1; i >= 0; i--)
+            {
+                var candidate = candidates[i];
+                if (candidate == null || candidate.rb == null)
+                {
+                    candidates.RemoveAt(i);
+                    continue;
+                }
+
+                bool isHeld = candidate.grabbable != null && candidate.grabbable.BeingHeld;
+                bool isAttached = cartPhysics.IsWeightAttached(candidate.rb);
+
+                if (isHeld)
+                {
+                    // Player is holding the weight: detach it so VR hand physics take full control
+                    if (isAttached)
+                    {
+                        cartPhysics.DetachWeight(candidate.rb);
+                    }
+                }
+                else
+                {
+                    // Player has released/dropped the weight into the tray: lock it onto the cart!
+                    if (!isAttached)
+                    {
+                        cartPhysics.AttachWeight(candidate.rb);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears all candidate weights when resetting.
+        /// </summary>
+        public void ClearCandidates()
+        {
+            candidates.Clear();
         }
     }
 }

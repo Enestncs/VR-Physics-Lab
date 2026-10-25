@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.EventSystems;
 using BNG;
 
 namespace VRPhysicsLab.Core
@@ -10,10 +9,17 @@ namespace VRPhysicsLab.Core
     /// Robust, satisfying physical VR button designed for Meta Quest 3 and BNG Framework.
     /// Supports hand touch/poke, palm presses, laser pointer clicks, and editor keyboard shortcuts.
     /// Provides mechanical spring animation, audio click feedback, and controller haptic rumble.
+    ///
+    /// Near interaction: a static touch zone (derived from the plunger's BoxCollider at rest) is polled
+    /// every frame with Physics.OverlapBox, so it does not depend on OnTriggerEnter messages
+    /// (which never reached this script when the trigger collider lived on a child without a Rigidbody)
+    /// and does not flicker when the plunger moves down out of the finger.
+    /// Far interaction: handled by <see cref="VRButtonRayInteractor"/> (auto-spawned), which calls
+    /// <see cref="RemotePress"/> / <see cref="AddHover"/> / <see cref="RemoveHover"/>.
     /// </summary>
     [ExecuteAlways]
     [RequireComponent(typeof(AudioSource))]
-    public class VRPhysicalButton : MonoBehaviour, IPointerClickHandler, IPointerDownHandler
+    public class VRPhysicalButton : MonoBehaviour
     {
         [Header("Plunger Setup")]
         [Tooltip("The moving part of the button that depresses.")]
@@ -24,6 +30,14 @@ namespace VRPhysicsLab.Core
         [SerializeField] private float travelDistance = 0.015f;
         [Tooltip("Speed of spring return.")]
         [SerializeField] private float springSpeed = 22f;
+
+        [Header("Touch Detection")]
+        [Tooltip("Extra margin (meters) added around the plunger's collider when detecting fingers.")]
+        [SerializeField] private float touchPadding = 0.015f;
+        [Tooltip("How far (meters) above the cap the palm/grab point of an open hand may be and still press.")]
+        [SerializeField] private float palmReach = 0.06f;
+        [Tooltip("Layers checked for hand/finger colliders.")]
+        [SerializeField] private LayerMask touchLayers = ~0;
 
         [Header("Feedback")]
         [SerializeField] private AudioClip clickSound;
@@ -52,11 +66,21 @@ namespace VRPhysicsLab.Core
         private AudioSource audioSource;
         private Material plungerMatInstance;
         private bool isPressed = false;
-        private float lastPressTime = -1f;
+        private float lastPressTime = -10f;
         private const float Cooldown = 0.25f;
+        private const float RemoteHoldTime = 0.15f;
 
-        // Tracks colliding objects to maintain depression while touching
-        private readonly HashSet<Collider> touchingColliders = new HashSet<Collider>();
+        // Touch zone in this transform's local space
+        private Vector3 zoneLocalCenter;
+        private Vector3 zoneLocalHalfExtents;
+        private readonly Collider[] overlapBuffer = new Collider[32];
+
+        private float remoteHoldUntil = -1f;
+        private int hoverCount = 0;
+        private ControllerHand lastPressingHand = ControllerHand.Right;
+
+        public bool IsPressed => isPressed;
+        public bool IsHovered => hoverCount > 0;
 
         public Vector3 RestingLocalPos
         {
@@ -65,6 +89,7 @@ namespace VRPhysicsLab.Core
             {
                 restingLocalPos = value;
                 UpdatePositions();
+                CacheTouchZone();
             }
         }
 
@@ -100,10 +125,17 @@ namespace VRPhysicsLab.Core
 
             UpdatePositions();
 
-            if (Application.isPlaying && plungerRenderer != null)
+            if (Application.isPlaying)
             {
-                plungerMatInstance = plungerRenderer.material;
-                SetEmission(normalEmission);
+                if (plungerRenderer != null)
+                {
+                    plungerMatInstance = plungerRenderer.material;
+                    plungerMatInstance.EnableKeyword("_EMISSION");
+                    SetEmission(normalEmission);
+                }
+
+                // Make sure far (laser) interaction is available in every scene that has a button
+                VRButtonRayInteractor.EnsureExists();
             }
         }
 
@@ -114,6 +146,7 @@ namespace VRPhysicsLab.Core
             {
                 plunger.localPosition = restingLocalPos;
             }
+            CacheTouchZone();
         }
 
         private void UpdatePositions()
@@ -123,6 +156,30 @@ namespace VRPhysicsLab.Core
                 restingLocalPos = plunger.localPosition;
             }
             pressedLocalPos = restingLocalPos - new Vector3(0f, travelDistance, 0f);
+        }
+
+        /// <summary>
+        /// Computes a static touch zone from the plunger's BoxCollider in its resting pose.
+        /// </summary>
+        private void CacheTouchZone()
+        {
+            BoxCollider box = (plunger != null && plunger != transform) ? plunger.GetComponent<BoxCollider>() : null;
+            if (box != null)
+            {
+                Vector3 centerInParent = restingLocalPos + plunger.localRotation * Vector3.Scale(box.center, plunger.localScale);
+                Transform parent = plunger.parent;
+                zoneLocalCenter = (parent == transform || parent == null)
+                    ? centerInParent
+                    : transform.InverseTransformPoint(parent.TransformPoint(centerInParent));
+                zoneLocalHalfExtents = Vector3.Scale(box.size, plunger.localScale) * 0.5f;
+            }
+            else
+            {
+                zoneLocalCenter = restingLocalPos;
+                zoneLocalHalfExtents = new Vector3(0.04f, 0.02f, 0.04f);
+            }
+
+            zoneLocalHalfExtents += Vector3.one * touchPadding;
         }
 
         private void Update()
@@ -139,81 +196,126 @@ namespace VRPhysicsLab.Core
             // Keyboard shortcut support for quick testing
             if (keyboardShortcut != KeyCode.None && Input.GetKeyDown(keyboardShortcut))
             {
-                TriggerPress(ControllerHand.Right);
+                RemotePress(ControllerHand.Right);
             }
 
-            // Clean up any null / destroyed / disabled colliders
-            touchingColliders.RemoveWhere(c => c == null || !c.enabled || !c.gameObject.activeInHierarchy);
+            bool nearPressed = DetectNearPress(out ControllerHand nearHand);
+            if (nearPressed) lastPressingHand = nearHand;
 
-            // Determine target position based on whether anything is pressing it
-            bool shouldBePressed = touchingColliders.Count > 0;
-            Vector3 targetPos = shouldBePressed ? pressedLocalPos : restingLocalPos;
+            bool remoteHeld = Time.time < remoteHoldUntil;
+            bool wantPressed = nearPressed || remoteHeld;
 
             // Smooth spring lerp
+            Vector3 targetPos = wantPressed ? pressedLocalPos : restingLocalPos;
             plunger.localPosition = Vector3.Lerp(plunger.localPosition, targetPos, Time.deltaTime * springSpeed);
 
-            // Handle press activation threshold
-            float currentY = plunger.localPosition.y;
-            float thresholdY = restingLocalPos.y - (travelDistance * 0.60f);
-
-            if (currentY <= thresholdY && !isPressed)
+            if (wantPressed && !isPressed)
             {
-                ActivatePress();
+                ActivatePress(lastPressingHand);
             }
-            else if (currentY > thresholdY && isPressed && !shouldBePressed)
+            else if (!wantPressed && isPressed)
             {
                 ActivateRelease();
             }
+
+            UpdateEmission();
         }
 
-        private void OnTriggerEnter(Collider other)
+        /// <summary>
+        /// Returns true if any player hand / finger is inside the touch zone.
+        /// </summary>
+        private bool DetectNearPress(out ControllerHand hand)
         {
-            if (IsValidPresser(other))
+            hand = ControllerHand.Right;
+
+            Vector3 lossy = transform.lossyScale;
+            Vector3 worldHalf = new Vector3(
+                Mathf.Abs(zoneLocalHalfExtents.x * lossy.x),
+                Mathf.Abs(zoneLocalHalfExtents.y * lossy.y),
+                Mathf.Abs(zoneLocalHalfExtents.z * lossy.z));
+            Vector3 worldCenter = transform.TransformPoint(zoneLocalCenter);
+
+            int count = UnityEngine.Physics.OverlapBoxNonAlloc(worldCenter, worldHalf, overlapBuffer, transform.rotation,
+                touchLayers, QueryTriggerInteraction.Collide);
+
+            for (int i = 0; i < count; i++)
             {
-                touchingColliders.Add(other);
-                ControllerHand hand = GetControllerHand(other);
-                TriggerHaptics(hand);
+                if (IsValidPresser(overlapBuffer[i], out hand))
+                {
+                    return true;
+                }
             }
-        }
 
-        private void OnTriggerExit(Collider other)
-        {
-            if (touchingColliders.Contains(other))
+            // Fallback for an open hand (BNG only enables finger colliders while pointing / making a fist):
+            // accept the Grabber's palm point if it is right on top of the cap.
+            var grabbers = VRButtonRayInteractor.Grabbers;
+            if (grabbers != null)
             {
-                touchingColliders.Remove(other);
+                for (int i = 0; i < grabbers.Count; i++)
+                {
+                    Grabber g = grabbers[i];
+                    if (g == null || !g.isActiveAndEnabled) continue;
+
+                    Vector3 local = transform.InverseTransformPoint(g.transform.position) - zoneLocalCenter;
+                    if (Mathf.Abs(local.x) <= zoneLocalHalfExtents.x &&
+                        Mathf.Abs(local.z) <= zoneLocalHalfExtents.z &&
+                        local.y >= -zoneLocalHalfExtents.y &&
+                        local.y <= zoneLocalHalfExtents.y + palmReach / Mathf.Max(0.0001f, Mathf.Abs(lossy.y)))
+                    {
+                        hand = g.HandSide;
+                        return true;
+                    }
+                }
             }
-        }
-
-        private bool IsValidPresser(Collider col)
-        {
-            if (col == null) return false;
-            if (col.transform.IsChildOf(transform)) return false; // Ignore own colliders
-
-            // Only accept player hands, controllers, fingers, or player body
-            // This prevents loose objects (like weights) from accidentally pressing or holding the button down
-            if (col.GetComponentInParent<Grabber>() != null) return true;
-            if (col.GetComponentInParent<UITrigger>() != null) return true;
-            if (col.GetComponentInParent<HandController>() != null) return true;
-            if (col.GetComponentInParent<BNGPlayerController>() != null) return true;
-            if (col.CompareTag("Player")) return true;
 
             return false;
         }
 
-        private ControllerHand GetControllerHand(Collider col)
+        private bool IsValidPresser(Collider col, out ControllerHand hand)
+        {
+            hand = ControllerHand.Right;
+            if (col == null || !col.enabled) return false;
+            if (col.transform.IsChildOf(transform)) return false; // Ignore own colliders
+            if (col is CharacterController) return false;          // Ignore the player's body capsule
+
+            // Only accept player hands / fingers.
+            // This prevents loose objects (like weights) from accidentally pressing or holding the button down.
+            UITrigger uiTrigger = col.GetComponentInParent<UITrigger>();
+            Grabber grabber = col.GetComponentInParent<Grabber>();
+            HandController handController = col.GetComponentInParent<HandController>();
+            HandCollision handCollision = col.GetComponentInParent<HandCollision>();
+
+            bool isHand = uiTrigger != null || grabber != null || handController != null || handCollision != null ||
+                          col.name.Contains("UI Trigger") || col.name.Contains("index") || col.CompareTag("Player");
+            if (!isHand) return false;
+
+            // Large grab trigger spheres would press the button from far away; those are handled by the
+            // palm-point fallback instead. Finger-tip UI triggers are fine.
+            bool isFingerTip = uiTrigger != null || col.name.Contains("UI Trigger") || col.name.Contains("index3");
+            if (col.isTrigger && !isFingerTip) return false;
+
+            if (grabber != null) hand = grabber.HandSide;
+            else if (handController != null && handController.grabber != null) hand = handController.grabber.HandSide;
+            else if (handCollision != null && handCollision.HandGrabber != null) hand = handCollision.HandGrabber.HandSide;
+            else hand = GuessHandFromName(col);
+
+            return true;
+        }
+
+        private static ControllerHand GuessHandFromName(Collider col)
         {
             string lowerName = col.transform.root.name.ToLower() + col.gameObject.name.ToLower();
             if (col.transform.parent != null) lowerName += col.transform.parent.name.ToLower();
-
-            if (lowerName.Contains("left")) return ControllerHand.Left;
-            return ControllerHand.Right;
+            return lowerName.Contains("left") ? ControllerHand.Left : ControllerHand.Right;
         }
 
-        private void ActivatePress()
+        private bool ActivatePress(ControllerHand hand)
         {
-            if (Time.time - lastPressTime < Cooldown) return;
+            if (Time.time - lastPressTime < Cooldown) return false;
             lastPressTime = Time.time;
             isPressed = true;
+
+            TriggerHaptics(hand);
 
             if (audioSource != null && clickSound != null)
             {
@@ -221,14 +323,13 @@ namespace VRPhysicsLab.Core
                 audioSource.PlayOneShot(clickSound, 0.9f);
             }
 
-            SetEmission(pressedEmission);
             onPressed?.Invoke();
+            return true;
         }
 
         private void ActivateRelease()
         {
             isPressed = false;
-            SetEmission(normalEmission);
 
             if (audioSource != null && releaseSound != null)
             {
@@ -239,27 +340,44 @@ namespace VRPhysicsLab.Core
             onReleased?.Invoke();
         }
 
-        public void TriggerPress(ControllerHand hand = ControllerHand.Right)
+        /// <summary>
+        /// Presses the button from a distance (laser pointer) or from code / keyboard.
+        /// </summary>
+        public void RemotePress(ControllerHand hand = ControllerHand.Right)
         {
-            if (Time.time - lastPressTime < Cooldown) return;
-            TriggerHaptics(hand);
-            ActivatePress();
-
-            if (Application.isPlaying)
+            if (!Application.isPlaying)
             {
-                StartCoroutine(PerformSimulatedRelease());
+                onPressed?.Invoke();
+                onReleased?.Invoke();
+                return;
             }
-            else
+
+            if (Time.time - lastPressTime < Cooldown) return;
+
+            lastPressingHand = hand;
+            remoteHoldUntil = Time.time + RemoteHoldTime;
+            if (!isPressed)
             {
-                ActivateRelease();
+                ActivatePress(hand);
             }
         }
 
-        private System.Collections.IEnumerator PerformSimulatedRelease()
+        /// <summary>
+        /// Kept for backwards compatibility with existing UnityEvent bindings.
+        /// </summary>
+        public void TriggerPress(ControllerHand hand = ControllerHand.Right)
         {
-            plunger.localPosition = pressedLocalPos;
-            yield return new WaitForSeconds(0.12f);
-            ActivateRelease();
+            RemotePress(hand);
+        }
+
+        public void AddHover()
+        {
+            hoverCount++;
+        }
+
+        public void RemoveHover()
+        {
+            hoverCount = Mathf.Max(0, hoverCount - 1);
         }
 
         private void TriggerHaptics(ControllerHand hand)
@@ -270,8 +388,22 @@ namespace VRPhysicsLab.Core
             }
         }
 
+        private void UpdateEmission()
+        {
+            if (plungerMatInstance == null) return;
+
+            Color target = isPressed ? pressedEmission
+                : (hoverCount > 0 ? Color.Lerp(normalEmission, pressedEmission, 0.45f) : normalEmission);
+            SetEmission(target);
+        }
+
+        private Color currentEmission = new Color(-1f, -1f, -1f, -1f);
+
         private void SetEmission(Color color)
         {
+            if (color == currentEmission) return;
+            currentEmission = color;
+
             if (plungerMatInstance != null && plungerMatInstance.HasProperty("_EmissionColor"))
             {
                 plungerMatInstance.SetColor("_EmissionColor", color);
@@ -279,22 +411,27 @@ namespace VRPhysicsLab.Core
             }
         }
 
-        // Pointer click integration
-        public void OnPointerClick(PointerEventData eventData)
+        private void OnDisable()
         {
-            TriggerPress(ControllerHand.Right);
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
-        {
+            hoverCount = 0;
         }
 
         private void OnDestroy()
         {
             if (plungerMatInstance != null)
             {
-                DestroyImmediate(plungerMatInstance);
+                Destroy(plungerMatInstance);
             }
         }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            if (!Application.isPlaying) CacheTouchZone();
+            Gizmos.color = new Color(0.2f, 1f, 0.4f, 0.6f);
+            Gizmos.matrix = transform.localToWorldMatrix;
+            Gizmos.DrawWireCube(zoneLocalCenter, zoneLocalHalfExtents * 2f);
+        }
+#endif
     }
 }
