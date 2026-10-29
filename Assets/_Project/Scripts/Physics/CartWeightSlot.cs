@@ -12,6 +12,7 @@ namespace VRPhysicsLab.Physics
     /// - As soon as the player releases/drops the weight inside the slot, it is locked onto the cart
     ///   (parented + kinematic + mass added) so it NEVER slides off the frictionless cart bed.
     /// - If the player grabs an attached weight, it is instantly detached and freed back to the hand.
+    /// - Attached weights are NEVER detached by trigger jitter when not held.
     /// </summary>
     public class CartWeightSlot : MonoBehaviour
     {
@@ -21,7 +22,7 @@ namespace VRPhysicsLab.Physics
         {
             public Rigidbody rb;
             public Grabbable grabbable;
-            public Collider collider;
+            public Collider[] colliders;
         }
 
         private readonly List<CandidateWeight> candidates = new List<CandidateWeight>();
@@ -61,12 +62,18 @@ namespace VRPhysicsLab.Physics
                 if (candidates[i].rb == rb) return;
             }
 
-            candidates.Add(new CandidateWeight
+            var colliders = rb.GetComponentsInChildren<Collider>();
+            var candidate = new CandidateWeight
             {
                 rb = rb,
                 grabbable = grabbable,
-                collider = other
-            });
+                colliders = colliders
+            };
+
+            // Ignore collision between hovering candidate weight and cart so VR hand never pushes the cart
+            cartPhysics.SetCandidateCollisionIgnored(colliders, true);
+
+            candidates.Add(candidate);
         }
 
         private void OnTriggerExit(Collider other)
@@ -76,16 +83,28 @@ namespace VRPhysicsLab.Physics
             var rb = other.attachedRigidbody;
             if (rb == null || rb == cartPhysics.Rigidbody) return;
 
+            bool isAttached = cartPhysics.IsWeightAttached(rb);
+            var grabbable = rb.GetComponent<Grabbable>();
+            bool isHeld = grabbable != null && grabbable.BeingHeld;
+
+            // CRITICAL FIX: If the weight is attached to the cart and NOT held by player,
+            // DO NOT detach it! Keeps the weight locked onto the cart and eliminates trigger-flicker loops.
+            if (isAttached && !isHeld)
+            {
+                return;
+            }
+
             for (int i = candidates.Count - 1; i >= 0; i--)
             {
                 if (candidates[i].rb == rb)
                 {
+                    cartPhysics.SetCandidateCollisionIgnored(candidates[i].colliders, false);
                     candidates.RemoveAt(i);
                     break;
                 }
             }
 
-            if (cartPhysics.IsWeightAttached(rb))
+            if (isAttached)
             {
                 cartPhysics.DetachWeight(rb);
             }
@@ -131,6 +150,13 @@ namespace VRPhysicsLab.Physics
         /// </summary>
         public void ClearCandidates()
         {
+            foreach (var c in candidates)
+            {
+                if (c != null && c.colliders != null && cartPhysics != null)
+                {
+                    cartPhysics.SetCandidateCollisionIgnored(c.colliders, false);
+                }
+            }
             candidates.Clear();
         }
     }

@@ -72,6 +72,13 @@ namespace VRPhysicsLab.Measurement
             }
         }
 
+        [Header("Braking & Track Boundaries")]
+        [Tooltip("Deceleration rate when smoothly braking after passing the finish gate.")]
+        [SerializeField] private float brakeDeceleration = 5.0f;
+
+        [Tooltip("Maximum track X position (near end bumper) where cart will be safely stopped.")]
+        [SerializeField] private float maxTrackX = 0.75f;
+
         private void FixedUpdate()
         {
             if (state == MeasurementState.Measuring && cart != null && cart.Rigidbody != null)
@@ -94,7 +101,35 @@ namespace VRPhysicsLab.Measurement
                     averageAcceleration = currentVelocity / elapsedTime;
                 }
 
+                // Safety boundary: if cart reaches end of track without triggering end gate
+                if (cart.transform.position.x >= maxTrackX)
+                {
+                    CompleteMeasurement();
+                }
+
                 onMeasurementUpdated?.Invoke();
+            }
+            else if (state == MeasurementState.Completed && cart != null && cart.Rigidbody != null)
+            {
+                // Smoothly decelerate cart to a safe stop at the end of the track
+                Vector3 vel = cart.Rigidbody.linearVelocity;
+                if (vel.sqrMagnitude > 0.0001f)
+                {
+                    cart.Rigidbody.linearVelocity = Vector3.MoveTowards(vel, Vector3.zero, brakeDeceleration * Time.fixedDeltaTime);
+                }
+                else
+                {
+                    cart.Rigidbody.linearVelocity = Vector3.zero;
+                }
+
+                // Clamp position so cart never rolls past the track end
+                if (cart.transform.position.x > maxTrackX)
+                {
+                    Vector3 pos = cart.transform.position;
+                    pos.x = maxTrackX;
+                    cart.transform.position = pos;
+                    cart.Rigidbody.linearVelocity = Vector3.zero;
+                }
             }
         }
 

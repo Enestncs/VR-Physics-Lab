@@ -39,7 +39,20 @@ Bu belge, projede geçici olarak küp/silindir gibi ilkel (primitive) objelerle 
 
 ---
 
+## Aşama 3: İstasyon 2 (Sürtünme Kuvveti Deneyi Donanımları)
+
+| # | Model Adı | Açıklama ve Özellikler | Yaklaşık Boyut (G x Y x D) | Mevcut Geçici Obje (Placeholder) |
+|---|---|---|---|---|
+| 12 | **Sürtünme Kızağı / Arabası (`SM_FrictionCart`)** | Altında değiştirilebilir veya sürtünme test tabanı bulunan, $m = 1.0\text{ kg}$ sabit kütleli, ray üzerinde durma mesafesini gösteren ibreli kızak. | $0.18\text{m} \times 0.06\text{m} \times 0.16\text{m}$ | `FrictionCart` (Küp gövde + alt kızak pabuçları + cetvel ibresi) |
+| 13 | **Buz / Teflon Yüzey Plakası (`SM_SurfacePlate_Ice`)** | Düşük sürtünme katsayısına ($\mu = 0.05$) sahip, buz mavisi/teflon dokulu, VR tutma kulplu tak-çıkar yüzey kaseti. | $0.24\text{m} \times 0.03\text{m} \times 0.16\text{m}$ | `SurfacePlate_Ice` (Açık mavi küp plaka + kulp) |
+| 14 | **Ahşap / Zımpara Yüzey Plakası (`SM_SurfacePlate_Wood`)** | Orta sürtünme katsayısına ($\mu = 0.20$) sahip, meşe ahşap/zımpara dokulu, VR tutma kulplu tak-çıkar yüzey kaseti. | $0.24\text{m} \times 0.03\text{m} \times 0.16\text{m}$ | `SurfacePlate_Wood` (Ahşap kahvesi küp plaka + kulp) |
+| 15 | **Kauçuk / Lastik Yüzey Plakası (`SM_SurfacePlate_Rubber`)** | Yüksek sürtünme katsayısına ($\mu = 0.55$) sahip, mat siyah desenli kauçuk dokulu, VR tutma kulplu tak-çıkar yüzey kaseti. | $0.24\text{m} \times 0.03\text{m} \times 0.16\text{m}$ | `SurfacePlate_Rubber` (Koyu antrasit küp plaka + kulp) |
+| 16 | **Yüzey Plakası Standı / Yuvalığı (`SM_SurfacePlate_Tray`)** | Masanın önünde yer alan, 3 farklı yüzey kasetini dik/eğik tutan etiketli masaüstü kaset yuvası. | $0.80\text{m} \times 0.03\text{m} \times 0.22\text{m}$ | `SurfacePlate_Tray` (Kaset standı + 3D etiket) |
+| 17 | **Sabit İtici Mekanizma (`SM_FrictionImpulseLauncher`)** | Her denemede arabaya tam olarak $v_0 = 1.2\text{ m/s}$ başlangıç hızı kazandıran yaylı/pnömatik sabit hız fırlatıcısı. | $0.12\text{m} \times 0.08\text{m} \times 0.16\text{m}$ | `FrictionLauncher` (Küp gövde + piston mili) |
+| 18 | **Sürtünme Telemetri Ekranı (`SM_FrictionDisplayMonitor`)** | Durma mesafesini, süresini, ivmeyi ve deneysel/teorik $\mu$ katsayısını bağıl hata yüzdesiyle canlı hesaplayıp gösteren monitör. | $0.70\text{m} \times 0.38\text{m} \times 0.08\text{m}$ | `MeasurementDisplay_Friction` (Kasa + WorldSpace Canvas) |
+
+---
+
 ## Gelecek Aşamalar İçin Planlanan Modeller (Ön Liste)
-* **Aşama 3 (Kuvvet Vektör Oku):** Arabanın üzerinde anlık ivme ve net kuvvet doğrultusunu gösteren 3D ok modeli (`SM_ForceVectorArrow`).
-* **Aşama 5 (Sürtünme Yüzey Plakaları):** Rayın üzerine takılıp çıkarılabilen Buz/Teflon, Zımpara/Ahşap ve Kauçuk/Lastik dokulu yüzey plakaları (`SM_SurfacePlate_Smooth`, `SM_SurfacePlate_Rough`, `SM_SurfacePlate_Rubber`).
-* **Aşama 5 (Açısı Ayarlanabilir Eğik Düzlem / Rampa):** Mafsallı, derece göstergeli rampa ayağı (`SM_AdjustableRamp`).
+* **İstasyon 3 (Eğik Düzlem / Rampa):** Açısı $0^\circ - 45^\circ$ arasında hassas olarak ayarlanabilen mafsallı rampa ayağı ve açı göstergesi (`SM_AdjustableRamp`).
+* **Kuvvet & İvme Vektör Okları:** Arabaların ve kızakların üzerinde anlık kuvvet ve ivmeyi gösteren dinamik 3D ok modelleri (`SM_ForceVectorArrow`).

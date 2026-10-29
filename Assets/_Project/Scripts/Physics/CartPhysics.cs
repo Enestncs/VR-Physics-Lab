@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using BNG;
 using VRPhysicsLab.Core;
+using VRPhysicsLab.Measurement;
 
 namespace VRPhysicsLab.Physics
 {
@@ -26,6 +27,13 @@ namespace VRPhysicsLab.Physics
         [Tooltip("If true, constrains motion to the X-axis while on the track.")]
         [SerializeField] private bool constrainToTrack = true;
 
+        [Header("Tray Slot Configuration")]
+        [Tooltip("Local Y position of the tray floor relative to the cart root.")]
+        [SerializeField] private float trayFloorLocalY = 0.0265f;
+
+        [Tooltip("Slot local X offsets when multiple weights are placed side-by-side.")]
+        [SerializeField] private float[] slotXOffsets = new float[] { -0.05f, 0.05f };
+
         [Header("Events")]
         public UnityEvent<float> onMassChanged;
 
@@ -42,6 +50,8 @@ namespace VRPhysicsLab.Physics
         private Rigidbody rb;
         private readonly List<AttachedWeight> attachedWeights = new List<AttachedWeight>();
         private Collider[] cartColliders;
+        private Collider[] trackColliders;
+        private MeasurementSystem measurementSystem;
 
         public float TotalMass => currentTotalMass;
         public Rigidbody Rigidbody
@@ -59,12 +69,17 @@ namespace VRPhysicsLab.Physics
         {
             rb = GetComponent<Rigidbody>();
             CacheCartColliders();
+            CacheTrackColliders();
             UpdateTotalMass();
         }
 
         private void Start()
         {
             ApplyTrackConstraints();
+            if (measurementSystem == null)
+            {
+                measurementSystem = Object.FindFirstObjectByType<MeasurementSystem>();
+            }
         }
 
         private void CacheCartColliders()
@@ -82,6 +97,21 @@ namespace VRPhysicsLab.Physics
             cartColliders = solid.ToArray();
         }
 
+        private void CacheTrackColliders()
+        {
+            var trackObj = GameObject.Find("Track_Assembly") ?? GameObject.Find("Track");
+            if (trackObj != null)
+            {
+                var cols = trackObj.GetComponentsInChildren<Collider>(true);
+                var solid = new List<Collider>();
+                foreach (var c in cols)
+                {
+                    if (c != null && !c.isTrigger) solid.Add(c);
+                }
+                trackColliders = solid.ToArray();
+            }
+        }
+
         private void FixedUpdate()
         {
             // Release weights the player grabs off the cart
@@ -91,6 +121,7 @@ namespace VRPhysicsLab.Physics
                 if (w.rb == null)
                 {
                     attachedWeights.RemoveAt(i);
+                    RearrangeWeights();
                     UpdateTotalMass();
                     continue;
                 }
@@ -157,18 +188,36 @@ namespace VRPhysicsLab.Physics
                 colliders = weightRb.GetComponentsInChildren<Collider>()
             };
 
+            // 1. Zero out any residual velocities
             if (!weightRb.isKinematic)
             {
                 weightRb.linearVelocity = Vector3.zero;
                 weightRb.angularVelocity = Vector3.zero;
             }
+
+            // 2. Lock to kinematic before parenting to prevent physics impulses
             weightRb.isKinematic = true;
-            weightRb.interpolation = RigidbodyInterpolation.None; // follows the (interpolated) cart transform
+            weightRb.interpolation = RigidbodyInterpolation.None;
             weightRb.transform.SetParent(transform, true);
 
+            // 3. Ignore collisions with cart, existing attached weights, and track
             SetCollisionIgnored(data, true);
 
+            // 4. Register and rearrange weights neatly in the tray
             attachedWeights.Add(data);
+            RearrangeWeights();
+
+            // 5. If experiment is idle, ensure cart remains completely stationary
+            if (measurementSystem == null) measurementSystem = Object.FindFirstObjectByType<MeasurementSystem>();
+            if (measurementSystem == null || measurementSystem.State == MeasurementState.Idle)
+            {
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+
             UpdateTotalMass();
             return true;
         }
@@ -198,20 +247,88 @@ namespace VRPhysicsLab.Physics
 
                 if (!weightRb.isKinematic && Rigidbody != null)
                 {
-                    // Keep the cart's momentum so it doesn't look like it stopped dead
-                    weightRb.linearVelocity = Rigidbody.linearVelocity;
+                    // Only transfer velocity if cart was actually in motion
+                    if (Rigidbody.linearVelocity.sqrMagnitude > 0.01f)
+                    {
+                        weightRb.linearVelocity = Rigidbody.linearVelocity;
+                    }
+                    else
+                    {
+                        weightRb.linearVelocity = Vector3.zero;
+                    }
                 }
             }
 
+            RearrangeWeights();
             UpdateTotalMass();
             return true;
         }
 
+        /// <summary>
+        /// Ignores or restores collisions between the given weight and:
+        /// 1. The cart's own colliders
+        /// 2. All other attached weights on the cart
+        /// 3. Track rails/colliders
+        /// </summary>
         private void SetCollisionIgnored(AttachedWeight data, bool ignore)
         {
-            if (data.colliders == null || cartColliders == null) return;
+            if (data.colliders == null) return;
 
-            foreach (var wc in data.colliders)
+            // 1. Cart colliders
+            if (cartColliders != null)
+            {
+                foreach (var wc in data.colliders)
+                {
+                    if (wc == null) continue;
+                    foreach (var cc in cartColliders)
+                    {
+                        if (cc == null) continue;
+                        UnityEngine.Physics.IgnoreCollision(wc, cc, ignore);
+                    }
+                }
+            }
+
+            // 2. All other attached weights
+            for (int i = 0; i < attachedWeights.Count; i++)
+            {
+                var other = attachedWeights[i];
+                if (other == null || other == data || other.colliders == null) continue;
+
+                foreach (var wc in data.colliders)
+                {
+                    if (wc == null) continue;
+                    foreach (var oc in other.colliders)
+                    {
+                        if (oc == null) continue;
+                        UnityEngine.Physics.IgnoreCollision(wc, oc, ignore);
+                    }
+                }
+            }
+
+            // 3. Track colliders
+            if (trackColliders != null)
+            {
+                foreach (var wc in data.colliders)
+                {
+                    if (wc == null) continue;
+                    foreach (var tc in trackColliders)
+                    {
+                        if (tc == null) continue;
+                        UnityEngine.Physics.IgnoreCollision(wc, tc, ignore);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Ignores or restores collision between external colliders (e.g. candidate weights in hand) and cart colliders.
+        /// Prevents VR hand from pushing the cart while hovering over the tray.
+        /// </summary>
+        public void SetCandidateCollisionIgnored(Collider[] colliders, bool ignore)
+        {
+            if (colliders == null || cartColliders == null) return;
+
+            foreach (var wc in colliders)
             {
                 if (wc == null) continue;
                 foreach (var cc in cartColliders)
@@ -219,28 +336,69 @@ namespace VRPhysicsLab.Physics
                     if (cc == null) continue;
                     UnityEngine.Physics.IgnoreCollision(wc, cc, ignore);
                 }
+                // Also ignore with already attached weights
+                foreach (var aw in attachedWeights)
+                {
+                    if (aw.colliders == null) continue;
+                    foreach (var ac in aw.colliders)
+                    {
+                        if (ac == null) continue;
+                        UnityEngine.Physics.IgnoreCollision(wc, ac, ignore);
+                    }
+                }
             }
         }
 
         /// <summary>
-        /// Registers a weight block placed onto the cart. (Kept for backwards compatibility.)
+        /// Rearranges all attached weights so they sit balanced and upright in the cart tray with zero clipping.
         /// </summary>
-        public void AddWeight(Rigidbody weightRb)
+        private void RearrangeWeights()
         {
-            AttachWeight(weightRb);
+            if (attachedWeights.Count == 1)
+            {
+                var w = attachedWeights[0];
+                if (w != null && w.rb != null)
+                {
+                    float y = trayFloorLocalY + GetWeightHalfHeight(w.rb);
+                    w.rb.transform.localPosition = new Vector3(0f, y, 0f);
+                    w.rb.transform.localRotation = Quaternion.identity;
+                }
+            }
+            else if (attachedWeights.Count >= 2)
+            {
+                for (int i = 0; i < attachedWeights.Count; i++)
+                {
+                    var w = attachedWeights[i];
+                    if (w == null || w.rb == null) continue;
+
+                    float slotX = (i < slotXOffsets.Length) ? slotXOffsets[i] : (i == 0 ? -0.05f : 0.05f);
+                    float y = trayFloorLocalY + GetWeightHalfHeight(w.rb);
+                    w.rb.transform.localPosition = new Vector3(slotX, y, 0f);
+                    w.rb.transform.localRotation = Quaternion.identity;
+                }
+            }
+
+            UnityEngine.Physics.SyncTransforms();
         }
 
-        /// <summary>
-        /// Unregisters a weight block removed from the cart. (Kept for backwards compatibility.)
-        /// </summary>
-        public void RemoveWeight(Rigidbody weightRb)
+        private float GetWeightHalfHeight(Rigidbody weightRb)
         {
-            DetachWeight(weightRb);
+            var box = weightRb.GetComponentInChildren<BoxCollider>();
+            if (box != null)
+            {
+                return box.size.y * weightRb.transform.lossyScale.y * 0.5f;
+            }
+            var col = weightRb.GetComponentInChildren<Collider>();
+            if (col != null)
+            {
+                return col.bounds.extents.y;
+            }
+            return 0.04f;
         }
 
-        /// <summary>
-        /// Recalculates total mass from base mass and all attached weight blocks.
-        /// </summary>
+        public void AddWeight(Rigidbody weightRb) => AttachWeight(weightRb);
+        public void RemoveWeight(Rigidbody weightRb) => DetachWeight(weightRb);
+
         public void UpdateTotalMass()
         {
             float total = baseMass;
@@ -265,9 +423,6 @@ namespace VRPhysicsLab.Physics
             onMassChanged?.Invoke(currentTotalMass);
         }
 
-        /// <summary>
-        /// Resets the cart to base mass and reapplies track constraints.
-        /// </summary>
         public void ResetToInitialState()
         {
             for (int i = attachedWeights.Count - 1; i >= 0; i--)
@@ -278,6 +433,12 @@ namespace VRPhysicsLab.Physics
             GetComponentInChildren<CartWeightSlot>()?.ClearCandidates();
             UpdateTotalMass();
             ApplyTrackConstraints();
+
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
     }
 }
