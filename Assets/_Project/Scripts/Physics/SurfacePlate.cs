@@ -34,6 +34,10 @@ namespace VRPhysicsLab.Physics
         private Grabbable grabbable;
         private Rigidbody rb;
         private Collider col;
+        private Collider[] allColliders;
+        private Transform handleTransform;
+        private Vector3 initialHandleLocalPos = new Vector3(0f, 0.04f, 0f);
+        private bool hasInitialHandlePos = false;
         private bool isInstalled = false;
 
         public SurfaceType Type => surfaceType;
@@ -46,23 +50,91 @@ namespace VRPhysicsLab.Physics
         public bool IsInstalled => isInstalled;
         public Grabbable Grabbable => grabbable != null ? grabbable : (grabbable = GetComponent<Grabbable>());
         public Rigidbody Rigidbody => rb != null ? rb : (rb = GetComponent<Rigidbody>());
-        public Collider Collider => col != null ? col : (col = GetComponent<Collider>());
+        public Collider Collider => col != null ? col : (col = GetComponentInChildren<Collider>());
+        public Collider[] AllColliders => allColliders != null && allColliders.Length > 0 ? allColliders : (allColliders = GetComponentsInChildren<Collider>(true));
 
         private void Awake()
         {
             grabbable = GetComponent<Grabbable>();
             rb = GetComponent<Rigidbody>();
+
+            EnsureGrabSetup();
+
+            handleTransform = transform.Find("Handle");
+            if (handleTransform != null)
+            {
+                initialHandleLocalPos = handleTransform.localPosition;
+                hasInitialHandlePos = true;
+            }
+        }
+
+        /// <summary>
+        /// Ensures BNG Grabbable and colliders are properly configured on the root object
+        /// so VR hand grabbers and remote grabbers always detect this surface plate.
+        /// </summary>
+        private void EnsureGrabSetup()
+        {
             col = GetComponent<Collider>();
+            if (col == null)
+            {
+                var box = gameObject.AddComponent<BoxCollider>();
+                box.center = new Vector3(0f, 0.022f, 0f);
+                box.size = new Vector3(0.20f, 0.07f, 0.16f);
+                col = box;
+            }
+
+            // Ensure any child colliders (if present) forward grab detection to this Grabbable
+            var childCols = GetComponentsInChildren<Collider>(true);
+            foreach (var c in childCols)
+            {
+                if (c != null && c.gameObject != gameObject)
+                {
+                    var gc = c.GetComponent<GrabbableChild>();
+                    if (gc == null)
+                    {
+                        gc = c.gameObject.AddComponent<GrabbableChild>();
+                    }
+                    gc.ParentGrabbable = grabbable;
+                }
+            }
+
+            if (grabbable != null)
+            {
+                grabbable.ForceDisableKinematicOnDrop = true;
+                grabbable.MakeChildCollidersGrabbable = true;
+            }
+
+            allColliders = GetComponentsInChildren<Collider>(true);
         }
 
         public void SetInstalled(bool installed)
         {
             isInstalled = installed;
+
+            if (handleTransform == null)
+            {
+                handleTransform = transform.Find("Handle");
+            }
+
+            if (handleTransform != null)
+            {
+                if (!hasInitialHandlePos)
+                {
+                    initialHandleLocalPos = new Vector3(0f, 0.04f, 0f);
+                    hasInitialHandlePos = true;
+                }
+
+                // When installed on the track, shift the handle to the back rail edge
+                // so the sliding friction cart never clips through the handle visually
+                handleTransform.localPosition = installed
+                    ? new Vector3(0f, 0.035f, 0.11f)
+                    : initialHandleLocalPos;
+            }
         }
 
         public void ResetToInitialState()
         {
-            isInstalled = false;
+            SetInstalled(false);
         }
     }
 }

@@ -28,11 +28,12 @@ namespace VRPhysicsLab.Physics
         private Vector3 initialPosition;
         private Quaternion initialRotation;
         private bool isLaunched = false;
+        private float currentSpeed = 0f;
 
         public float Mass => mass;
         public Rigidbody Rigidbody => rb != null ? rb : (rb = GetComponent<Rigidbody>());
         public bool IsLaunched => isLaunched;
-        public float CurrentSpeed => rb != null ? Mathf.Abs(rb.linearVelocity.x) : 0f;
+        public float CurrentSpeed => isLaunched ? currentSpeed : (rb != null ? Mathf.Abs(rb.linearVelocity.x) : 0f);
 
         private void Awake()
         {
@@ -58,10 +59,13 @@ namespace VRPhysicsLab.Physics
         {
             if (rb == null) return;
 
-            float vx = rb.linearVelocity.x;
+            if (!isLaunched)
+            {
+                currentSpeed = 0f;
+                return;
+            }
 
-            // Only apply friction while moving along the track
-            if (Mathf.Abs(vx) > 0.005f)
+            if (currentSpeed > 0.0001f)
             {
                 float mu = 0.05f; // default low friction if no plate installed
                 if (surfaceSlot != null && surfaceSlot.InstalledPlate != null)
@@ -69,26 +73,34 @@ namespace VRPhysicsLab.Physics
                     mu = surfaceSlot.InstalledPlate.FrictionCoefficient;
                 }
 
-                // F_friction = \u03bc * m * g
-                // Deceleration = -\u03bc * g * sign(vx)
+                // F_friction = \u03bc * m * g  =>  Deceleration a = \u03bc * g
                 float frictionDecel = mu * gravity;
-                float deltaV = frictionDecel * Time.fixedDeltaTime;
+                float dt = Time.fixedDeltaTime;
+                float prevSpeed = currentSpeed;
+                float nextSpeed = Mathf.Max(0f, prevSpeed - frictionDecel * dt);
+                currentSpeed = nextSpeed;
 
-                if (Mathf.Abs(vx) <= deltaV)
+                if (nextSpeed > 0f)
                 {
-                    // Velocity reached zero: come to a clean stop
-                    rb.linearVelocity = Vector3.zero;
+                    // Set velocity to midpoint average over this step so PhysX integrates exact distance (v_k^2 - v_{k+1}^2) / (2a)
+                    float avgVx = 0.5f * (prevSpeed + nextSpeed);
+                    rb.linearVelocity = new Vector3(avgVx, 0f, 0f);
                     rb.angularVelocity = Vector3.zero;
                 }
                 else
                 {
-                    float newVx = vx - Mathf.Sign(vx) * deltaV;
-                    rb.linearVelocity = new Vector3(newVx, 0f, 0f);
+                    // Final partial step to come to rest at exact stopping distance
+                    float remDist = (prevSpeed * prevSpeed) / (2f * frictionDecel);
+                    Vector3 finalPos = rb.position + new Vector3(remDist, 0f, 0f);
+                    rb.position = finalPos;
+                    transform.position = finalPos;
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
                 }
             }
-            else if (isLaunched && Mathf.Abs(vx) <= 0.005f)
+            else
             {
-                // Fully stopped
+                currentSpeed = 0f;
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
             }
@@ -106,19 +118,23 @@ namespace VRPhysicsLab.Physics
 
         /// <summary>
         /// Launches the cart with a specified initial impulse velocity.
+        /// Cannot be launched again until ResetToInitialState() is called.
         /// </summary>
         public void Launch(float initialVelocity)
         {
             if (rb == null) return;
+            if (isLaunched) return;
 
             isLaunched = true;
-            rb.linearVelocity = new Vector3(initialVelocity, 0f, 0f);
+            currentSpeed = Mathf.Abs(initialVelocity);
+            rb.linearVelocity = new Vector3(currentSpeed, 0f, 0f);
             rb.angularVelocity = Vector3.zero;
         }
 
         public void ResetToInitialState()
         {
             isLaunched = false;
+            currentSpeed = 0f;
             if (rb != null)
             {
                 rb.linearVelocity = Vector3.zero;
@@ -129,6 +145,7 @@ namespace VRPhysicsLab.Physics
             transform.position = initialPosition;
             transform.rotation = initialRotation;
             ApplyTrackConstraints();
+            UnityEngine.Physics.SyncTransforms();
         }
     }
 }

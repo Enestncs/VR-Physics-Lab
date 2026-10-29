@@ -71,10 +71,10 @@ namespace VRPhysicsLab.Measurement
             {
                 elapsedTime += Time.fixedDeltaTime;
                 currentDistance = Mathf.Abs(cart.transform.position.x - startPosition.x);
-                currentSpeed = Mathf.Abs(cart.Rigidbody.linearVelocity.x);
+                currentSpeed = cart.CurrentSpeed;
 
                 // Check if cart has come to a complete stop after launching
-                if (elapsedTime > 0.15f && currentSpeed <= 0.005f)
+                if (elapsedTime > 0.04f && currentSpeed <= 0.001f)
                 {
                     CompleteRun();
                 }
@@ -85,12 +85,16 @@ namespace VRPhysicsLab.Measurement
 
         private void OnLauncherFired()
         {
-            StartRun();
+            if (state == MeasurementState.Idle)
+            {
+                StartRun();
+            }
         }
 
         public void StartRun()
         {
             if (cart == null) return;
+            if (state != MeasurementState.Idle) return;
 
             state = MeasurementState.Measuring;
             elapsedTime = 0f;
@@ -107,12 +111,17 @@ namespace VRPhysicsLab.Measurement
             if (state != MeasurementState.Measuring) return;
 
             state = MeasurementState.Completed;
+            if (cart != null)
+            {
+                currentDistance = Mathf.Abs(cart.transform.position.x - startPosition.x);
+            }
+            currentSpeed = 0f;
 
             float stopDistance = Mathf.Max(0.01f, currentDistance);
             float stopTime = Mathf.Max(0.05f, elapsedTime);
 
-            // Average deceleration: a = v_0 / t  or  v_0^2 / (2 * d)
-            float decel = initialVelocity / stopTime;
+            // Average deceleration: a = v_0^2 / (2 * d)
+            float decel = (initialVelocity * initialVelocity) / (2f * stopDistance);
 
             // Experimental \u03bc: \u03bc = v_0^2 / (2 * g * d)
             float expMu = (initialVelocity * initialVelocity) / (2f * Gravity * stopDistance);

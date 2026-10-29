@@ -151,6 +151,7 @@ namespace VRPhysicsLab.Measurement
         public void StartMeasurement()
         {
             if (cart == null) return;
+            if (state != MeasurementState.Idle) return;
 
             state = MeasurementState.Measuring;
             elapsedTime = 0f;

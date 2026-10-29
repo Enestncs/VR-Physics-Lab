@@ -90,9 +90,22 @@ namespace VRPhysicsLab.Core
 
             onBeforeReset?.Invoke();
 
+            // 1. First reset systems/slots/carts so any attached weights or surface plates are cleanly detached
             foreach (var resetable in resetables)
             {
-                resetable?.ResetToInitialState();
+                if (resetable != null && !(resetable is ResetableObject))
+                {
+                    resetable.ResetToInitialState();
+                }
+            }
+
+            // 2. Then reset individual ResetableObjects back to their initial transforms & Rigidbody states
+            foreach (var resetable in resetables)
+            {
+                if (resetable is ResetableObject)
+                {
+                    resetable.ResetToInitialState();
+                }
             }
 
             onAfterReset?.Invoke();

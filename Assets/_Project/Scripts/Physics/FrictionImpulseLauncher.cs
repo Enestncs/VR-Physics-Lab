@@ -60,6 +60,12 @@ namespace VRPhysicsLab.Physics
 
             if (targetCart == null) return;
 
+            // Prevent re-launching after already launched until reset
+            if (isLaunched || targetCart.IsLaunched)
+            {
+                return;
+            }
+
             isLaunched = true;
             if (pistonArm != null)
             {

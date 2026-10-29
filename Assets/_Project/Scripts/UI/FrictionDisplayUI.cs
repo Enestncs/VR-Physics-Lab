@@ -74,7 +74,7 @@ namespace VRPhysicsLab.UI
 
             float timeVal = measurementSystem != null ? measurementSystem.ElapsedTime : 0f;
             float distVal = measurementSystem != null ? measurementSystem.CurrentDistance : 0f;
-            float speedVal = measurementSystem != null ? measurementSystem.CurrentSpeed : 0f;
+            float speedVal = measurementSystem != null ? (state == MeasurementState.Measuring ? measurementSystem.CurrentSpeed : 1.20f) : 1.20f;
             float decelVal = 0f;
 
             string sName = surfaceSlot != null && surfaceSlot.InstalledPlate != null
@@ -83,7 +83,7 @@ namespace VRPhysicsLab.UI
 
             float theoMu = surfaceSlot != null && surfaceSlot.InstalledPlate != null
                 ? surfaceSlot.InstalledPlate.FrictionCoefficient
-                : 0f;
+                : 0.05f;
 
             float expMu = 0f;
             float relError = 0f;
@@ -97,6 +97,7 @@ namespace VRPhysicsLab.UI
                 relError = res.relativeError;
                 distVal = res.stoppingDistance;
                 timeVal = res.stoppingTime;
+                speedVal = res.initialVelocity;
             }
             else if (state == MeasurementState.Measuring && timeVal > 0.05f)
             {
@@ -136,7 +137,7 @@ namespace VRPhysicsLab.UI
 
             if (statusBadgeText != null) statusBadgeText.text = statusStr;
             if (statusBadgeBg != null) statusBadgeBg.color = badgeBgColor;
-            if (surfaceBadgeText != null) surfaceBadgeText.text = $"Y\u00fczey: <b>{sName}</b> (\u03bc={theoMu:F2})";
+            if (surfaceBadgeText != null) surfaceBadgeText.text = $"<b>{sName}</b> (\u03bc={theoMu:F2})";
 
             if (timeText != null) timeText.text = $"{timeVal:F2} s";
             if (distanceText != null) distanceText.text = $"{distVal:F2} m";

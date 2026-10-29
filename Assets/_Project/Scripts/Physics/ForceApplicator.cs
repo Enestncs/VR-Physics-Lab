@@ -31,6 +31,7 @@ namespace VRPhysicsLab.Physics
 
         [Header("State")]
         [SerializeField] private bool isApplyingForce = false;
+        [SerializeField] private bool hasLaunched = false;
 
         [Header("Events")]
         public UnityEvent onForceStarted;
@@ -43,6 +44,7 @@ namespace VRPhysicsLab.Physics
         }
 
         public bool IsApplyingForce => isApplyingForce;
+        public bool HasLaunched => hasLaunched;
         public ForceApplicationMode Mode => forceMode;
 
         private void FixedUpdate()
@@ -59,12 +61,20 @@ namespace VRPhysicsLab.Physics
 
         /// <summary>
         /// Starts applying net force to the target cart.
+        /// Once launched, cannot be triggered again until ResetToInitialState() is called.
         /// </summary>
         [ContextMenu("Start Force")]
         public void StartApplyingForce()
         {
             if (targetCart == null) return;
 
+            // Prevent re-launching after already launched until reset
+            if (hasLaunched || isApplyingForce)
+            {
+                return;
+            }
+
+            hasLaunched = true;
             isApplyingForce = true;
             onForceStarted?.Invoke();
 
@@ -96,6 +106,7 @@ namespace VRPhysicsLab.Physics
 
         public void ResetToInitialState()
         {
+            hasLaunched = false;
             StopApplyingForce();
         }
     }
