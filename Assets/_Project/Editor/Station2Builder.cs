@@ -220,7 +220,7 @@ namespace VRPhysicsLab.Editor
             var tray = GameObject.CreatePrimitive(PrimitiveType.Cube);
             tray.name = "SurfacePlate_Tray";
             tray.transform.SetParent(plateStation.transform, false);
-            tray.transform.localPosition = new Vector3(0.00f, 0.908f, 0.78f);
+            tray.transform.localPosition = new Vector3(0.05f, 0.908f, 0.78f);
             tray.transform.localScale = new Vector3(0.80f, 0.02f, 0.22f);
             if (matBtnHousing != null) tray.GetComponent<Renderer>().sharedMaterial = matBtnHousing;
 
@@ -248,16 +248,21 @@ namespace VRPhysicsLab.Editor
                 pMesh.name = "Plate_Base";
                 pMesh.transform.SetParent(pGo.transform, false);
                 pMesh.transform.localPosition = Vector3.zero;
-                pMesh.transform.localScale = new Vector3(0.24f, 0.025f, 0.16f);
+                pMesh.transform.localScale = new Vector3(0.22f, 0.025f, 0.16f);
                 if (visualMat != null) pMesh.GetComponent<Renderer>().sharedMaterial = visualMat;
-                var pCol = pMesh.GetComponent<BoxCollider>();
+                Object.DestroyImmediate(pMesh.GetComponent<Collider>());
+
+                // Compound BoxCollider on root for reliable VR grabbing
+                var rootCol = pGo.AddComponent<BoxCollider>();
+                rootCol.center = new Vector3(0f, 0.015f, 0f);
+                rootCol.size = new Vector3(0.22f, 0.06f, 0.16f);
 
                 // Plate Grab Handle on top
                 var handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 handle.name = "Handle";
                 handle.transform.SetParent(pGo.transform, false);
-                handle.transform.localPosition = new Vector3(0f, 0.035f, 0f);
-                handle.transform.localScale = new Vector3(0.12f, 0.03f, 0.04f);
+                handle.transform.localPosition = new Vector3(0f, 0.040f, 0f);
+                handle.transform.localScale = new Vector3(0.12f, 0.032f, 0.045f);
                 if (matBtnHousing != null) handle.GetComponent<Renderer>().sharedMaterial = matBtnHousing;
                 Object.DestroyImmediate(handle.GetComponent<Collider>());
 
@@ -294,67 +299,56 @@ namespace VRPhysicsLab.Editor
                 spSo.ApplyModifiedProperties();
 
                 // ResetableObject
-                var resObj = pGo.AddComponent<ResetableObject>();
+                pGo.AddComponent<ResetableObject>();
 
                 return sp;
             };
 
-            var plateIce = createPlate("SurfacePlate_Ice", SurfaceType.Ice, "Buz / Teflon", 0.05f, matIce, pmatIce, new Color(0.6f, 0.9f, 1f), new Vector3(-0.25f, 0.94f, 0.78f));
-            var plateWood = createPlate("SurfacePlate_Wood", SurfaceType.Wood, "Ahşap / Zımpara", 0.20f, matWood, pmatWood, new Color(0.85f, 0.65f, 0.4f), new Vector3(0.00f, 0.94f, 0.78f));
-            var plateRubber = createPlate("SurfacePlate_Rubber", SurfaceType.Rubber, "Kauçuk / Lastik", 0.55f, matRubber, pmatRubber, new Color(0.25f, 0.25f, 0.28f), new Vector3(0.25f, 0.94f, 0.78f));
+            var plateIce = createPlate("SurfacePlate_Ice", SurfaceType.Ice, "Buz / Teflon", 0.05f, matIce, pmatIce, new Color(0.6f, 0.9f, 1f), new Vector3(-0.21f, 0.93f, 0.78f));
+            var plateWood = createPlate("SurfacePlate_Wood", SurfaceType.Wood, "Ahşap / Zımpara", 0.20f, matWood, pmatWood, new Color(0.85f, 0.65f, 0.4f), new Vector3(0.05f, 0.93f, 0.78f));
+            var plateRubber = createPlate("SurfacePlate_Rubber", SurfaceType.Rubber, "Kauçuk / Lastik", 0.55f, matRubber, pmatRubber, new Color(0.25f, 0.25f, 0.28f), new Vector3(0.31f, 0.93f, 0.78f));
 
-            // 8. Friction Cart
-            var cartGo = new GameObject("FrictionCart");
-            cartGo.transform.SetParent(root.transform, false);
+            // 8. Friction Cart (Identical 3D cart model & dimensions to Station 1's PhysicsCart for visual continuity)
+            var st1Cart = GameObject.Find("--- [EXPERIMENT 1 - NEWTON] ---/PhysicsCart");
+            GameObject cartGo;
+            if (st1Cart != null)
+            {
+                cartGo = Object.Instantiate(st1Cart, root.transform);
+                cartGo.name = "FrictionCart";
+                // Remove Station 1 specific scripts/triggers while keeping all visual meshes (Cart_Body, WeightBed/Tray_Plate, 4 Wheels + Hubcaps, Bumper_Rear)
+                var oldCartPhys = cartGo.GetComponent<CartPhysics>();
+                if (oldCartPhys != null) Object.DestroyImmediate(oldCartPhys);
+                var oldGrab = cartGo.GetComponent<Grabbable>();
+                if (oldGrab != null) Object.DestroyImmediate(oldGrab);
+                var oldSlot = cartGo.GetComponentInChildren<CartWeightSlot>(true);
+                if (oldSlot != null)
+                {
+                    var slotTriggerCol = oldSlot.GetComponent<Collider>();
+                    if (slotTriggerCol != null) Object.DestroyImmediate(slotTriggerCol);
+                    Object.DestroyImmediate(oldSlot);
+                }
+            }
+            else
+            {
+                cartGo = new GameObject("FrictionCart");
+                cartGo.transform.SetParent(root.transform, false);
+                var cartCol = cartGo.AddComponent<BoxCollider>();
+                cartCol.size = new Vector3(0.22f, 0.05f, 0.16f);
+
+                var cartBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cartBody.name = "Cart_Body";
+                cartBody.transform.SetParent(cartGo.transform, false);
+                cartBody.transform.localPosition = Vector3.zero;
+                cartBody.transform.localScale = new Vector3(0.22f, 0.045f, 0.16f);
+                if (matCart != null) cartBody.GetComponent<Renderer>().sharedMaterial = matCart;
+                Object.DestroyImmediate(cartBody.GetComponent<Collider>());
+            }
             cartGo.transform.localPosition = new Vector3(-0.68f, 0.965f, 1.10f);
+            cartGo.transform.localRotation = Quaternion.identity;
+            cartGo.transform.localScale = Vector3.one;
 
-            var cartBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cartBody.name = "Cart_Body";
-            cartBody.transform.SetParent(cartGo.transform, false);
-            cartBody.transform.localPosition = Vector3.zero;
-            cartBody.transform.localScale = new Vector3(0.18f, 0.06f, 0.16f);
-            if (matCart != null) cartBody.GetComponent<Renderer>().sharedMaterial = matCart;
-
-            // Slider Contact Plate on Bottom
-            var cartSkid = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cartSkid.name = "Cart_ContactSkid";
-            cartSkid.transform.SetParent(cartGo.transform, false);
-            cartSkid.transform.localPosition = new Vector3(0f, -0.032f, 0f);
-            cartSkid.transform.localScale = new Vector3(0.17f, 0.005f, 0.15f);
-            if (matBtnHousing != null) cartSkid.GetComponent<Renderer>().sharedMaterial = matBtnHousing;
-            Object.DestroyImmediate(cartSkid.GetComponent<Collider>());
-
-            // Front Bumper / Pointer
-            var cartBumper = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cartBumper.name = "Cart_Bumper";
-            cartBumper.transform.SetParent(cartGo.transform, false);
-            cartBumper.transform.localPosition = new Vector3(0.095f, 0f, 0f);
-            cartBumper.transform.localScale = new Vector3(0.015f, 0.04f, 0.14f);
-            if (matBtnRed != null) cartBumper.GetComponent<Renderer>().sharedMaterial = matBtnRed;
-            Object.DestroyImmediate(cartBumper.GetComponent<Collider>());
-
-            // Pointer arrow indicator pointing at the track ruler
-            var cartPointer = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cartPointer.name = "Cart_RulerPointer";
-            cartPointer.transform.SetParent(cartGo.transform, false);
-            cartPointer.transform.localPosition = new Vector3(0.095f, -0.01f, -0.09f);
-            cartPointer.transform.localScale = new Vector3(0.005f, 0.02f, 0.025f);
-            if (matBtnRed != null) cartPointer.GetComponent<Renderer>().sharedMaterial = matBtnRed;
-            Object.DestroyImmediate(cartPointer.GetComponent<Collider>());
-
-            // Cart Label Canvas
-            var cartLabelGo = new GameObject("Cart_Label");
-            cartLabelGo.transform.SetParent(cartGo.transform, false);
-            cartLabelGo.transform.localPosition = new Vector3(0f, 0.035f, 0f);
-            cartLabelGo.transform.localRotation = Quaternion.Euler(90, 0, 0);
-            cartLabelGo.transform.localScale = Vector3.one * 0.003f;
-            var cartLabel = cartLabelGo.AddComponent<TextMeshProUGUI>();
-            cartLabel.text = "<b>SÜRTÜNME KIZAĞI</b>\nm = 1.0 kg";
-            cartLabel.fontSize = 11;
-            cartLabel.alignment = TextAlignmentOptions.Center;
-            cartLabel.rectTransform.sizeDelta = new Vector2(50, 30);
-
-            var cartRb = cartGo.AddComponent<Rigidbody>();
+            var cartRb = cartGo.GetComponent<Rigidbody>();
+            if (cartRb == null) cartRb = cartGo.AddComponent<Rigidbody>();
             cartRb.mass = 1.0f;
             cartRb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             cartRb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -367,9 +361,12 @@ namespace VRPhysicsLab.Editor
             cartSo.FindProperty("gravity").floatValue = 9.81f;
             cartSo.ApplyModifiedProperties();
 
-            cartGo.AddComponent<ResetableObject>();
+            if (cartGo.GetComponent<ResetableObject>() == null)
+            {
+                cartGo.AddComponent<ResetableObject>();
+            }
 
-            // 9. Impulse Launcher
+            // 9. Impulse Launcher (Identical dimensions and mounted LaunchButton layout as Station 1's ForceLauncher)
             var launcherGo = new GameObject("FrictionLauncher");
             launcherGo.transform.SetParent(trackAssembly.transform, false);
             launcherGo.transform.localPosition = new Vector3(-0.85f, 0.95f, 1.10f);
@@ -378,15 +375,15 @@ namespace VRPhysicsLab.Editor
             launcherHousing.name = "Launcher_Housing";
             launcherHousing.transform.SetParent(launcherGo.transform, false);
             launcherHousing.transform.localPosition = Vector3.zero;
-            launcherHousing.transform.localScale = new Vector3(0.12f, 0.08f, 0.16f);
+            launcherHousing.transform.localScale = new Vector3(0.12f, 0.07f, 0.18f);
             if (matTable != null) launcherHousing.GetComponent<Renderer>().sharedMaterial = matTable;
 
             var piston = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             piston.name = "Launcher_Piston";
             piston.transform.SetParent(launcherGo.transform, false);
-            piston.transform.localPosition = new Vector3(0.08f, 0f, 0f);
+            piston.transform.localPosition = new Vector3(0.10f, 0f, 0f);
             piston.transform.localRotation = Quaternion.Euler(0, 0, 90);
-            piston.transform.localScale = new Vector3(0.03f, 0.04f, 0.03f);
+            piston.transform.localScale = new Vector3(0.025f, 0.05f, 0.025f);
             if (matTrack != null) piston.GetComponent<Renderer>().sharedMaterial = matTrack;
             Object.DestroyImmediate(piston.GetComponent<Collider>());
 
@@ -398,37 +395,34 @@ namespace VRPhysicsLab.Editor
             launcherSo.FindProperty("pushedOffset").vector3Value = new Vector3(0.04f, 0f, 0f);
             launcherSo.ApplyModifiedProperties();
 
-            // 10. Buttons (Clone Station 1's Launch & Reset buttons for guaranteed BNG compatibility)
-            var st1LaunchBtn = GameObject.Find("LaunchButton");
-            var st1ResetBtn = GameObject.Find("ResetButton");
+            // 10. Buttons (Identical arrangement to Station 1: LaunchButton mounted on top of Launcher, ResetButton at (-0.75, 0.905, 0.78))
+            var st1LaunchBtn = GameObject.Find("--- [EXPERIMENT 1 - NEWTON] ---/Track_Assembly/ForceLauncher/LaunchButton") ?? GameObject.Find("LaunchButton");
+            var st1ResetBtn = GameObject.Find("--- [EXPERIMENT 1 - NEWTON] ---/ResetButton") ?? GameObject.Find("ResetButton");
 
             GameObject launchBtnGo;
             if (st1LaunchBtn != null)
             {
-                launchBtnGo = Object.Instantiate(st1LaunchBtn, root.transform);
-                launchBtnGo.name = "LaunchButton_Friction";
+                launchBtnGo = Object.Instantiate(st1LaunchBtn, launcherGo.transform);
+                launchBtnGo.name = "LaunchButton";
             }
             else
             {
-                launchBtnGo = new GameObject("LaunchButton_Friction");
-                launchBtnGo.transform.SetParent(root.transform, false);
+                launchBtnGo = new GameObject("LaunchButton");
+                launchBtnGo.transform.SetParent(launcherGo.transform, false);
             }
-            launchBtnGo.transform.localPosition = new Vector3(-0.65f, 0.91f, 0.78f);
+            launchBtnGo.transform.localPosition = new Vector3(0f, 0.045f, 0f);
             launchBtnGo.transform.localRotation = Quaternion.identity;
+            launchBtnGo.transform.localScale = Vector3.one;
 
-            // Update Launch Button text and event
+            // Update Launch Button event (keeps exact Station 1 label styling)
             var launchBtnScript = launchBtnGo.GetComponent<VRPhysicalButton>();
             if (launchBtnScript != null)
             {
-                // Clear persistent calls and hook to launcher.Launch
                 while (launchBtnScript.onPressed.GetPersistentEventCount() > 0)
                 {
                     UnityEventTools.RemovePersistentListener(launchBtnScript.onPressed, 0);
                 }
                 UnityEventTools.AddPersistentListener(launchBtnScript.onPressed, launcher.Launch);
-
-                var launchLabel = launchBtnGo.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (launchLabel != null) launchLabel.text = "<size=14><b>FIRLAT</b></size>\n<size=10>LAUNCH</size>";
             }
 
             GameObject resetBtnGo;
@@ -442,8 +436,9 @@ namespace VRPhysicsLab.Editor
                 resetBtnGo = new GameObject("ResetButton_Friction");
                 resetBtnGo.transform.SetParent(root.transform, false);
             }
-            resetBtnGo.transform.localPosition = new Vector3(-0.45f, 0.91f, 0.78f);
+            resetBtnGo.transform.localPosition = new Vector3(-0.75f, 0.905f, 0.78f);
             resetBtnGo.transform.localRotation = Quaternion.identity;
+            resetBtnGo.transform.localScale = Vector3.one;
 
             var resetBtnScript = resetBtnGo.GetComponent<VRPhysicalButton>();
             var resetMgr = Object.FindFirstObjectByType<ResetManager>();
@@ -454,9 +449,6 @@ namespace VRPhysicsLab.Editor
                     UnityEventTools.RemovePersistentListener(resetBtnScript.onPressed, 0);
                 }
                 UnityEventTools.AddPersistentListener(resetBtnScript.onPressed, resetMgr.ResetAll);
-
-                var resetLabel = resetBtnGo.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (resetLabel != null) resetLabel.text = "<size=14><b>SIFIRLA</b></size>\n<size=10>RESET</size>";
             }
 
             // 11. Measurement System
