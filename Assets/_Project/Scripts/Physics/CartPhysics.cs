@@ -29,10 +29,13 @@ namespace VRPhysicsLab.Physics
 
         [Header("Tray Slot Configuration")]
         [Tooltip("Local Y position of the tray floor relative to the cart root.")]
-        [SerializeField] private float trayFloorLocalY = 0.0265f;
+        [SerializeField] private float trayFloorLocalY = 0.0592f;
+
+        [Tooltip("Local X center of the weight tray bed relative to the cart root.")]
+        [SerializeField] private float trayCenterLocalX = -0.0326f;
 
         [Tooltip("Slot local X offsets when multiple weights are placed side-by-side.")]
-        [SerializeField] private float[] slotXOffsets = new float[] { -0.05f, 0.05f };
+        [SerializeField] private float[] slotXOffsets = new float[] { -0.075f, 0.010f };
 
         [Header("Events")]
         public UnityEvent<float> onMassChanged;
@@ -360,8 +363,8 @@ namespace VRPhysicsLab.Physics
                 if (w != null && w.rb != null)
                 {
                     float y = trayFloorLocalY + GetWeightHalfHeight(w.rb);
-                    w.rb.transform.localPosition = new Vector3(0f, y, 0f);
-                    w.rb.transform.localRotation = Quaternion.identity;
+                    w.rb.transform.localPosition = new Vector3(trayCenterLocalX, y, 0f);
+                    w.rb.transform.localRotation = GetUprightLocalRotation(w.rb);
                 }
             }
             else if (attachedWeights.Count >= 2)
@@ -371,14 +374,29 @@ namespace VRPhysicsLab.Physics
                     var w = attachedWeights[i];
                     if (w == null || w.rb == null) continue;
 
-                    float slotX = (i < slotXOffsets.Length) ? slotXOffsets[i] : (i == 0 ? -0.05f : 0.05f);
+                    float slotX = (i < slotXOffsets.Length) ? slotXOffsets[i] : (i == 0 ? -0.075f : 0.010f);
                     float y = trayFloorLocalY + GetWeightHalfHeight(w.rb);
                     w.rb.transform.localPosition = new Vector3(slotX, y, 0f);
-                    w.rb.transform.localRotation = Quaternion.identity;
+                    w.rb.transform.localRotation = GetUprightLocalRotation(w.rb);
                 }
             }
 
             UnityEngine.Physics.SyncTransforms();
+        }
+
+        private Quaternion GetUprightLocalRotation(Rigidbody weightRb)
+        {
+            var mf = weightRb != null ? weightRb.GetComponent<MeshFilter>() : null;
+            if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name != "Cube")
+            {
+                return Quaternion.Euler(270f, 0f, 0f);
+            }
+            // Blender FBX meshes exported with Z-up use X=270 for upright orientation
+            if (mf != null && mf.sharedMesh != null && mf.sharedMesh.bounds.size.x < 0.1f)
+            {
+                return Quaternion.Euler(270f, 0f, 0f);
+            }
+            return Quaternion.identity;
         }
 
         private float GetWeightHalfHeight(Rigidbody weightRb)

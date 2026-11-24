@@ -333,17 +333,37 @@ namespace VRPhysicsLab.Editor
                 cartGo = new GameObject("FrictionCart");
                 cartGo.transform.SetParent(root.transform, false);
                 var cartCol = cartGo.AddComponent<BoxCollider>();
-                cartCol.size = new Vector3(0.22f, 0.05f, 0.16f);
+                cartCol.center = new Vector3(0f, 0.02f, 0f);
+                cartCol.size = new Vector3(0.24f, 0.09f, 0.16f);
 
-                var cartBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cartBody.name = "Cart_Body";
-                cartBody.transform.SetParent(cartGo.transform, false);
-                cartBody.transform.localPosition = Vector3.zero;
-                cartBody.transform.localScale = new Vector3(0.22f, 0.045f, 0.16f);
-                if (matCart != null) cartBody.GetComponent<Renderer>().sharedMaterial = matCart;
-                Object.DestroyImmediate(cartBody.GetComponent<Collider>());
+                var carFbx = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Project/Models/car.fbx");
+                if (carFbx != null)
+                {
+                    var carModel = (GameObject)PrefabUtility.InstantiatePrefab(carFbx, cartGo.transform);
+                    PrefabUtility.UnpackPrefabInstance(carModel, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                    carModel.name = "Car_Model";
+                    carModel.transform.localPosition = new Vector3(0.0008f, 0.0960f, 0f);
+                    carModel.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                    carModel.transform.localScale = new Vector3(0.80f, 0.80f, 0.80f);
+                    var wheels = carModel.transform.Find("Cube.004");
+                    if (wheels != null)
+                    {
+                        wheels.localPosition = new Vector3(0.0272f, -0.1025f, 0f);
+                        wheels.localScale = new Vector3(12.5674f, 10.7000f, 4.8738f);
+                    }
+                }
+                else
+                {
+                    var cartBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    cartBody.name = "Cart_Body";
+                    cartBody.transform.SetParent(cartGo.transform, false);
+                    cartBody.transform.localPosition = Vector3.zero;
+                    cartBody.transform.localScale = new Vector3(0.22f, 0.045f, 0.16f);
+                    if (matCart != null) cartBody.GetComponent<Renderer>().sharedMaterial = matCart;
+                    Object.DestroyImmediate(cartBody.GetComponent<Collider>());
+                }
             }
-            cartGo.transform.localPosition = new Vector3(-0.68f, 0.965f, 1.10f);
+            cartGo.transform.localPosition = new Vector3(-0.68f, 0.973f, 1.10f);
             cartGo.transform.localRotation = Quaternion.identity;
             cartGo.transform.localScale = Vector3.one;
 
@@ -369,7 +389,7 @@ namespace VRPhysicsLab.Editor
             // 9. Impulse Launcher (Identical dimensions and mounted LaunchButton layout as Station 1's ForceLauncher)
             var launcherGo = new GameObject("FrictionLauncher");
             launcherGo.transform.SetParent(trackAssembly.transform, false);
-            launcherGo.transform.localPosition = new Vector3(-0.85f, 0.95f, 1.10f);
+            launcherGo.transform.localPosition = new Vector3(-0.91f, 0.95f, 1.10f);
 
             var launcherHousing = GameObject.CreatePrimitive(PrimitiveType.Cube);
             launcherHousing.name = "Launcher_Housing";
