@@ -99,15 +99,15 @@ namespace VRPhysicsLab.Editor
 
             var signBoard = GameObject.CreatePrimitive(PrimitiveType.Cube);
             signBoard.name = "StationSign_Board";
-            signBoard.transform.SetParent(signPost.transform, false);
-            signBoard.transform.localPosition = new Vector3(0f, 0.28f, 0f);
-            signBoard.transform.localScale = new Vector3(0.05f, 0.22f, 0.45f);
+            signBoard.transform.SetParent(table.transform, false);
+            signBoard.transform.localPosition = new Vector3(-1.02f, 1.43f, 0.70f);
+            signBoard.transform.localScale = new Vector3(0.45f, 0.22f, 0.04f);
             if (matTable != null) signBoard.GetComponent<Renderer>().sharedMaterial = matTable;
 
             var signCanvasGo = new GameObject("SignCanvas");
             signCanvasGo.transform.SetParent(table.transform, false);
-            signCanvasGo.transform.localPosition = new Vector3(-0.99f, 1.43f, 0.70f);
-            signCanvasGo.transform.localRotation = Quaternion.Euler(0, 90, 0);
+            signCanvasGo.transform.localPosition = new Vector3(-1.02f, 1.43f, 0.678f);
+            signCanvasGo.transform.localRotation = Quaternion.identity;
             signCanvasGo.transform.localScale = Vector3.one * 0.0018f;
             var signCanvas = signCanvasGo.AddComponent<Canvas>();
             signCanvas.renderMode = RenderMode.WorldSpace;
