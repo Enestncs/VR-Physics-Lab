@@ -352,6 +352,14 @@ namespace VRPhysicsLab.Physics
             if (trackSurfaceRenderer != null && mat != null)
             {
                 trackSurfaceRenderer.material = mat;
+                // Match UV tiling to the elongated track aspect ratio (~8:1) so textures don't stretch
+                var instMat = trackSurfaceRenderer.material;
+                if (instMat != null && instMat.mainTexture != null)
+                {
+                    Vector3 s = trackSurfaceRenderer.transform.lossyScale;
+                    float aspect = s.z > 0.001f ? Mathf.Max(1f, s.x / s.z) : 8f;
+                    instMat.mainTextureScale = new Vector2(aspect, 1f);
+                }
             }
         }
 

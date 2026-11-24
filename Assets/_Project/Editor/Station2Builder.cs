@@ -105,14 +105,20 @@ namespace VRPhysicsLab.Editor
             if (matTable != null) signBoard.GetComponent<Renderer>().sharedMaterial = matTable;
 
             var signCanvasGo = new GameObject("SignCanvas");
-            signCanvasGo.transform.SetParent(signBoard.transform, false);
-            signCanvasGo.transform.localPosition = new Vector3(0.55f, 0f, 0f);
+            signCanvasGo.transform.SetParent(table.transform, false);
+            signCanvasGo.transform.localPosition = new Vector3(-0.99f, 1.43f, 0.70f);
             signCanvasGo.transform.localRotation = Quaternion.Euler(0, 90, 0);
-            signCanvasGo.transform.localScale = Vector3.one * 0.002f;
-            var signText = signCanvasGo.AddComponent<TextMeshProUGUI>();
+            signCanvasGo.transform.localScale = Vector3.one * 0.0018f;
+            var signCanvas = signCanvasGo.AddComponent<Canvas>();
+            signCanvas.renderMode = RenderMode.WorldSpace;
+            var signRect = signCanvasGo.GetComponent<RectTransform>();
+            signRect.sizeDelta = new Vector2(240, 110);
+            var signTextGo = new GameObject("Sign_Text");
+            signTextGo.transform.SetParent(signCanvasGo.transform, false);
+            var signText = signTextGo.AddComponent<TextMeshProUGUI>();
             signText.text = "<size=24><b><color=#38BDF8>İSTASYON 2</color></b></size>\n<size=18>Sürtünme Kuvveti Deneyi</size>\n<size=12><color=#94A3B8>F_s = µ · m · g</color></size>";
             signText.alignment = TextAlignmentOptions.Center;
-            signText.rectTransform.sizeDelta = new Vector2(220, 100);
+            signText.rectTransform.sizeDelta = new Vector2(240, 110);
 
             // 5. Track Assembly
             var trackAssembly = new GameObject("Track_Assembly_Friction");
@@ -179,17 +185,24 @@ namespace VRPhysicsLab.Editor
                 if (matWeight != null) tick.GetComponent<Renderer>().sharedMaterial = matWeight;
                 Object.DestroyImmediate(tick.GetComponent<Collider>());
 
-                // Label on the front rail face
-                var lblGo = new GameObject($"Label_{d:F2}m");
-                lblGo.transform.SetParent(tick.transform, false);
-                lblGo.transform.localPosition = new Vector3(0f, 0f, -0.6f);
-                lblGo.transform.localRotation = Quaternion.Euler(0, 0, 0);
-                lblGo.transform.localScale = Vector3.one * 0.015f;
-                var lblTmp = lblGo.AddComponent<TextMeshProUGUI>();
-                lblTmp.text = $"{d:F2}m";
-                lblTmp.fontSize = 10;
+                // Label on the front rail face (WorldSpace Canvas parented to distanceMarksRoot so scale isn't distorted)
+                var lblCanvasGo = new GameObject($"Label_{d:F2}m");
+                lblCanvasGo.transform.SetParent(distanceMarksRoot.transform, false);
+                lblCanvasGo.transform.localPosition = new Vector3(xPos, 0.946f, 0.968f);
+                lblCanvasGo.transform.localRotation = Quaternion.identity;
+                lblCanvasGo.transform.localScale = Vector3.one * 0.001f;
+                var lblCanvas = lblCanvasGo.AddComponent<Canvas>();
+                lblCanvas.renderMode = RenderMode.WorldSpace;
+                lblCanvasGo.GetComponent<RectTransform>().sizeDelta = new Vector2(70, 26);
+
+                var lblTextGo = new GameObject("Text");
+                lblTextGo.transform.SetParent(lblCanvasGo.transform, false);
+                var lblTmp = lblTextGo.AddComponent<TextMeshProUGUI>();
+                lblTmp.text = $"<b>{d:F2}m</b>";
+                lblTmp.fontSize = 18;
+                lblTmp.color = new Color(0.10f, 0.14f, 0.20f, 1f);
                 lblTmp.alignment = TextAlignmentOptions.Center;
-                lblTmp.rectTransform.sizeDelta = new Vector2(50, 20);
+                lblTmp.rectTransform.sizeDelta = new Vector2(70, 26);
             }
 
             // 6. SurfacePlateSlot (snaps plate, applies physics & visual materials)
