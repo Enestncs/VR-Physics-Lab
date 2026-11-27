@@ -1494,7 +1494,7 @@ MonoBehaviour:
     type: 3}
   m_PrefabInstance: {fileID: 2476840536702634805}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1677924668}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1b9287f1bc8824f46aa494f0e81043c8, type: 3}
@@ -15181,6 +15181,7 @@ GameObject:
   - component: {fileID: 1155976894}
   - component: {fileID: 1155976893}
   - component: {fileID: 1155976892}
+  - component: {fileID: 1155976895}
   m_Layer: 0
   m_Name: InclinedCart
   m_TagString: Untagged
@@ -15250,6 +15251,25 @@ Transform:
   - {fileID: 2007209685327988339}
   m_Father: {fileID: 992914840}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1155976895
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1155976891}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a2043ecfdc49e040a37786d90e2aac5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Visuals.ForceVectorVisualizer
+  stationType: 3
+  showVectors: 1
+  forceScale: 0.042
+  accelScale: 0.048
+  velocityScale: 0.14
+  minArrowLength: 0.08
+  maxArrowLength: 0.38
 --- !u!1 &1162723894
 GameObject:
   m_ObjectHideFlags: 0
@@ -20716,6 +20736,7 @@ GameObject:
   - component: {fileID: 1536334943}
   - component: {fileID: 1536334944}
   - component: {fileID: 1536334947}
+  - component: {fileID: 1536334948}
   m_Layer: 0
   m_Name: FrictionCart
   m_TagString: Untagged
@@ -20820,6 +20841,25 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.24, y: 0.09, z: 0.16}
   m_Center: {x: 0, y: 0.02, z: 0}
+--- !u!114 &1536334948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1536334942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a2043ecfdc49e040a37786d90e2aac5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Visuals.ForceVectorVisualizer
+  stationType: 2
+  showVectors: 1
+  forceScale: 0.042
+  accelScale: 0.048
+  velocityScale: 0.14
+  minArrowLength: 0.08
+  maxArrowLength: 0.38
 --- !u!1 &1544305413
 GameObject:
   m_ObjectHideFlags: 0
@@ -23057,6 +23097,31 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!1 &1677924668 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6135275473854356213, guid: 1ecf3e066a2e3bb40bc58aff14a5b10a,
+    type: 3}
+  m_PrefabInstance: {fileID: 2476840536702634805}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1677924673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1677924668}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a2043ecfdc49e040a37786d90e2aac5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Visuals.ForceVectorVisualizer
+  stationType: 1
+  showVectors: 1
+  forceScale: 0.042
+  accelScale: 0.048
+  velocityScale: 0.14
+  minArrowLength: 0.08
+  maxArrowLength: 0.38
 --- !u!1 &1683954464
 GameObject:
   m_ObjectHideFlags: 0
@@ -24376,6 +24441,7 @@ GameObject:
   - component: {fileID: 1779406223}
   - component: {fileID: 1779406222}
   - component: {fileID: 1779406224}
+  - component: {fileID: 1779406225}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -24450,6 +24516,20 @@ MonoBehaviour:
       m_Calls: []
   brakeDeceleration: 5
   maxTrackX: 0.75
+--- !u!114 &1779406225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1779406221}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9ad8392c6b488549a4a300b3ea15828, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Core.LabAudioFeedback
+  masterVolume: 0.75
+  enableHaptics: 1
 --- !u!1 &1780518138
 GameObject:
   m_ObjectHideFlags: 0
@@ -29753,7 +29833,11 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 6135275473854356213, guid: 1ecf3e066a2e3bb40bc58aff14a5b10a,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1677924673}
   m_SourcePrefab: {fileID: 100100000, guid: 1ecf3e066a2e3bb40bc58aff14a5b10a, type: 3}
 --- !u!4 &2664496310414473269
 Transform:

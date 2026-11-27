@@ -65,4 +65,4 @@ Bu belge, projede geçici olarak küp/silindir gibi ilkel (primitive) objelerle 
 ---
 
 ## Gelecek Aşamalar İçin Planlanan Modeller (Ön Liste)
-* **Kuvvet & İvme Vektör Okları:** Arabaların ve kızakların üzerinde anlık kuvvet ($F_{\text{net}}, f_s, mg\sin\theta, N$) ve ivmeyi gösteren dinamik 3D ok modelleri (`SM_ForceVectorArrow`).
+* **Kuvvet & İvme Vektör Okları (`SM_ForceVectorArrow`):** ✅ Prosedürel 3D oklar (`VectorArrow3D.cs` + `ForceVectorVisualizer.cs`) tüm 3 istasyona entegre edildi (isteğe bağlı olarak ileride özel Blender modeliyle değiştirilebilir).

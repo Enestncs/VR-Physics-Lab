@@ -9,6 +9,7 @@ using VRPhysicsLab.Core;
 using VRPhysicsLab.Physics;
 using VRPhysicsLab.Measurement;
 using VRPhysicsLab.UI;
+using VRPhysicsLab.Visuals;
 
 namespace VRPhysicsLab.Editor
 {
@@ -295,6 +296,11 @@ namespace VRPhysicsLab.Editor
             cartSo.FindProperty("endLocalX").floatValue = -0.12f;
             cartSo.FindProperty("deckLocalY").floatValue = 0.052f;
             cartSo.ApplyModifiedProperties();
+
+            var vectorVis = cartGo.AddComponent<ForceVectorVisualizer>();
+            var visSo = new SerializedObject(vectorVis);
+            visSo.FindProperty("stationType").enumValueIndex = (int)VectorStationType.Station3_InclinedPlane;
+            visSo.ApplyModifiedProperties();
 
             // Apply initial 20° tilt immediately in Editor so scene looks ready right away
             adjustableRamp.ApplyImmediate();
