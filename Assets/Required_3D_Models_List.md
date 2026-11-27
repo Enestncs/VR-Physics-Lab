@@ -53,6 +53,16 @@ Bu belge, projede geçici olarak küp/silindir gibi ilkel (primitive) objelerle 
 
 ---
 
+## Aşama 4: İstasyon 3 (Eğik Düzlem Deneyi Donanımları)
+
+| # | Model Adı | Açıklama ve Özellikler | Yaklaşık Boyut (G x Y x D) | Mevcut Geçici Obje (Placeholder) |
+|---|---|---|---|---|
+| 19 | **Eğik Düzlem Arabası (`SM_InclinedCart`)** | Sürtünmesiz kabul edilen rampa boyunca serbest bırakıldığında $a = g \cdot \sin\theta$ ivmesiyle hızlanan deney arabası. | $0.20\text{m} \times 0.08\text{m} \times 0.16\text{m}$ | ✅ `Assets/_Project/Models/car.fbx` (Tamamlandı) |
+| 20 | **Ayarlanabilir Eğik Düzlem Rampası (`SM_AdjustableRamp`)** | Açısı $10^\circ - 45^\circ$ arasında $5^\circ$ adımlarla ayarlanabilen, mafsallı tabanlı, teleskopik destek ayaklı ve yan kılavuz raylı rampa mekanizması. | $1.50\text{m} \times 0.06\text{m} \times 0.26\text{m}$ | `InclinedRamp_Assembly` (Küp ray/korkuluk + silindir mafsal & teleskopik ayak) |
+| 21 | **Açı Kontrol Butonları (`SM_AngleButton_Blue` x2)** | Rampanın eğim açısını $-5^\circ$ azaltan ve $+5^\circ$ artıran mavi renkli endüstriyel buton çifti. | $0.14\text{m} \times 0.05\text{m} \times 0.14\text{m}$ | `AngleDownButton`, `AngleUpButton` (Mavi silindir buton başlığı) |
+| 22 | **Eğik Düzlem Telemetri Monitörü (`SM_InclinedDisplayMonitor`)** | İniş süresi, eğim mesafesi, bitiş hızı, deneysel/teorik ivme ($g \cdot \sin\theta$), paralel kuvvet ($mg\sin\theta$) ve bağıl hatayı canlı gösteren yüksek ayaklı monitör. | $0.70\text{m} \times 0.38\text{m} \times 0.08\text{m}$ | `MeasurementDisplay_Inclined` (Kasa + uzun ayak + WorldSpace Canvas) |
+
+---
+
 ## Gelecek Aşamalar İçin Planlanan Modeller (Ön Liste)
-* **İstasyon 3 (Eğik Düzlem / Rampa):** Açısı $0^\circ - 45^\circ$ arasında hassas olarak ayarlanabilen mafsallı rampa ayağı ve açı göstergesi (`SM_AdjustableRamp`).
-* **Kuvvet & İvme Vektör Okları:** Arabaların ve kızakların üzerinde anlık kuvvet ve ivmeyi gösteren dinamik 3D ok modelleri (`SM_ForceVectorArrow`).
+* **Kuvvet & İvme Vektör Okları:** Arabaların ve kızakların üzerinde anlık kuvvet ($F_{\text{net}}, f_s, mg\sin\theta, N$) ve ivmeyi gösteren dinamik 3D ok modelleri (`SM_ForceVectorArrow`).

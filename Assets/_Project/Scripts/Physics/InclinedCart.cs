@@ -115,6 +115,11 @@ namespace VRPhysicsLab.Physics
         {
             if (isReleased) return;
 
+            if (ramp != null)
+            {
+                ramp.ApplyImmediate();
+            }
+
             isReleased = true;
             hasFinished = false;
             currentSpeed = 0f;

@@ -196,10 +196,10 @@ namespace VRPhysicsLab.Editor
             if (matBtnYellow != null) finishLine.GetComponent<Renderer>().sharedMaterial = matBtnYellow;
             Object.DestroyImmediate(finishLine.GetComponent<Collider>());
 
-            // Angle Readout Badge right near the hinge
+            // Angle Readout Badge right near the hinge (offset clear of finished cart)
             var angleCanvasGo = new GameObject("AngleReadout_Canvas");
             angleCanvasGo.transform.SetParent(rampRoot.transform, false);
-            angleCanvasGo.transform.localPosition = new Vector3(0.78f, 0.985f, 0.94f);
+            angleCanvasGo.transform.localPosition = new Vector3(0.84f, 0.965f, 0.90f);
             angleCanvasGo.transform.localRotation = Quaternion.identity;
             angleCanvasGo.transform.localScale = Vector3.one * 0.0014f;
             var angleCanvas = angleCanvasGo.AddComponent<Canvas>();
@@ -351,6 +351,10 @@ namespace VRPhysicsLab.Editor
             var angleDownBtn = spawnButton(st1ResetBtn, "AngleDownButton", new Vector3(-0.22f, 0.905f, 0.78f), "<b>AÇI -5°</b>\n<size=14>AZALT</size>", matCart);
             if (angleDownBtn != null)
             {
+                var btnSo = new SerializedObject(angleDownBtn);
+                btnSo.FindProperty("keyboardShortcut").intValue = (int)KeyCode.Minus;
+                btnSo.FindProperty("pressedEmission").colorValue = new Color(0.15f, 0.65f, 0.95f, 1f);
+                btnSo.ApplyModifiedProperties();
                 UnityEventTools.AddPersistentListener(angleDownBtn.onPressed, adjustableRamp.DecreaseAngle);
             }
 
@@ -358,6 +362,10 @@ namespace VRPhysicsLab.Editor
             var angleUpBtn = spawnButton(st1ResetBtn, "AngleUpButton", new Vector3(0.02f, 0.905f, 0.78f), "<b>AÇI +5°</b>\n<size=14>ARTIR</size>", matCart);
             if (angleUpBtn != null)
             {
+                var btnSo = new SerializedObject(angleUpBtn);
+                btnSo.FindProperty("keyboardShortcut").intValue = (int)KeyCode.Equals;
+                btnSo.FindProperty("pressedEmission").colorValue = new Color(0.15f, 0.65f, 0.95f, 1f);
+                btnSo.ApplyModifiedProperties();
                 UnityEventTools.AddPersistentListener(angleUpBtn.onPressed, adjustableRamp.IncreaseAngle);
             }
 
@@ -391,16 +399,16 @@ namespace VRPhysicsLab.Editor
                 displayGo = new GameObject("MeasurementDisplay_Inclined");
                 displayGo.transform.SetParent(root.transform, false);
             }
-            // Positioned slightly higher & behind ramp so even at 45° the monitor stays clearly readable
-            displayGo.transform.localPosition = new Vector3(0.35f, 1.38f, 1.44f);
+            // Positioned high & to the right so even at 45° the ramp never blocks the monitor
+            displayGo.transform.localPosition = new Vector3(0.62f, 1.68f, 1.44f);
             displayGo.transform.localRotation = Quaternion.identity;
 
-            // Extend Display_Stand cleanly down to the tabletop (world Y = 0.905 -> localY = -0.475)
+            // Extend Display_Stand cleanly down to the tabletop (world Y = 0.905 -> localY = -0.775)
             var stand = displayGo.transform.Find("Display_Stand");
             if (stand != null)
             {
-                stand.localPosition = new Vector3(stand.localPosition.x, -0.3275f, stand.localPosition.z);
-                stand.localScale = new Vector3(stand.localScale.x, 0.295f, stand.localScale.z);
+                stand.localPosition = new Vector3(stand.localPosition.x, -0.4775f, stand.localPosition.z);
+                stand.localScale = new Vector3(stand.localScale.x, 0.595f, stand.localScale.z);
             }
 
             var oldDisplayUi = displayGo.GetComponent<DigitalDisplayUI>();
