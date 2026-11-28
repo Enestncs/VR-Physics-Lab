@@ -55,17 +55,20 @@ namespace VRPhysicsLab.Editor
                 attachedVisualizers++;
             }
 
-            // 4. LabAudioFeedback on Managers (or standalone)
-            var existingAudio = Object.FindFirstObjectByType<LabAudioFeedback>();
-            if (existingAudio == null)
+            // 4. LabAudioFeedback & DesktopTestController on Managers
+            var managersGo = GameObject.Find("Managers") ?? Object.FindFirstObjectByType<ResetManager>()?.gameObject;
+            if (managersGo == null)
             {
-                var managersGo = GameObject.Find("Managers") ?? Object.FindFirstObjectByType<ResetManager>()?.gameObject;
-                if (managersGo == null)
-                {
-                    managersGo = new GameObject("LabAudioFeedback");
-                    Undo.RegisterCreatedObjectUndo(managersGo, "Create LabAudioFeedback");
-                }
+                managersGo = new GameObject("Managers");
+                Undo.RegisterCreatedObjectUndo(managersGo, "Create Managers");
+            }
+            if (Object.FindFirstObjectByType<LabAudioFeedback>() == null)
+            {
                 Undo.AddComponent<LabAudioFeedback>(managersGo);
+            }
+            if (Object.FindFirstObjectByType<DesktopTestController>() == null)
+            {
+                Undo.AddComponent<DesktopTestController>(managersGo);
             }
 
             EditorSceneManager.MarkSceneDirty(activeScene);

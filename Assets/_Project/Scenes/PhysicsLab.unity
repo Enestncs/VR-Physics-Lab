@@ -19180,7 +19180,7 @@ PrefabInstance:
     - target: {fileID: 5117709272763234211, guid: 2af1d2045149fe743b81bc4d1a6f8406,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.05
       objectReference: {fileID: 0}
     - target: {fileID: 5117709272763234211, guid: 2af1d2045149fe743b81bc4d1a6f8406,
         type: 3}
@@ -24442,6 +24442,7 @@ GameObject:
   - component: {fileID: 1779406222}
   - component: {fileID: 1779406224}
   - component: {fileID: 1779406225}
+  - component: {fileID: 1779406226}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -24530,6 +24531,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Core.LabAudioFeedback
   masterVolume: 0.75
   enableHaptics: 1
+--- !u!114 &1779406226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1779406221}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a8a924807f1b3143a4730b53bf91fe0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPhysicsLab.Core.DesktopTestController
+  enableDesktopModeWhenNoHMD: 1
+  walkSpeed: 2.4
+  sprintMultiplier: 1.6
+  mouseSensitivity: 2
+  minPitch: -75
+  maxPitch: 75
+  interactRange: 3.2
+  holdDistance: 0.72
+  minHoldDistance: 0.4
+  maxHoldDistance: 1.35
+  holdSmoothSpeed: 18
+  station1StandPos: {x: 0, y: 0.5, z: -0.2}
+  station2StandPos: {x: 2.4, y: 0.5, z: -0.2}
+  station3StandPos: {x: -2.4, y: 0.5, z: -0.2}
 --- !u!1 &1780518138
 GameObject:
   m_ObjectHideFlags: 0
